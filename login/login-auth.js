@@ -27,10 +27,14 @@ window.handleGoogleSignIn = async function() {
     
     // Redirect to homepage
     setTimeout(() => {
-      window.location.href = '../homepage/homepage.html';
+      window.location.href = '../homepage/index.html';
     }, 1500);
   } else {
-    showToast('Google Sign-In failed: ' + result.error, 'error');
+    let errorMessage = result.error;
+    if (errorMessage.includes("auth/unauthorized-domain")) {
+      errorMessage = "Domain not authorized. Add this domain to Firebase Console > Auth > Settings.";
+    }
+    showToast('Google Sign-In failed: ' + errorMessage, 'error');
   }
 };
 

@@ -2,21 +2,24 @@
 
 You are seeing two specific errors. Here is how to fix them permanently.
 
-## 1. Fix "auth/unauthorized-domain" Error
+## 1. Fix "auth/unauthorized-domain" Error (CRITICAL)
 
-This error happens because Firebase blocks sign-ins from unknown domains for security. You must explicitly allow your Vercel website.
+**You are seeing this error because Firebase blocks your Vercel website by default.**
 
-1.  Go to the [Firebase Console](https://console.firebase.google.com/).
-2.  Select your project (**Bus-FMS**).
-3.  In the left menu, click **Build** > **Authentication**.
-4.  Click on the **Settings** tab.
-5.  Click on **Authorized domains**.
-6.  Click **Add domain**.
-7.  Enter your Vercel domain (e.g., `bus-fms.vercel.app`).
-    *   *Tip: You can copy this from your browser address bar when you are on the error page.*
-8.  Click **Add**.
+1.  **Copy your Vercel Domain**: Look at your browser address bar (e.g., `https://bus-fms.vercel.app`). Copy just the domain part: `bus-fms.vercel.app`.
+2.  **Go to Firebase Console**: [https://console.firebase.google.com/](https://console.firebase.google.com/)
+3.  **Select Project**: Click on **Bus-FMS**.
+4.  **Go to Auth Settings**:
+    *   Click **Build** in the left menu.
+    *   Click **Authentication**.
+    *   Click the **Settings** tab (top of the page).
+    *   Click **Authorized domains**.
+5.  **Add Domain**:
+    *   Click **Add domain**.
+    *   Paste your domain (e.g., `bus-fms.vercel.app`).
+    *   Click **Add**.
 
-**Result:** The Google Sign-In popup will now work.
+**Result:** The "Continue with Google" button will work immediately after this.
 
 ---
 
