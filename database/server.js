@@ -27,28 +27,41 @@ app.get('/', (req, res) => {
 });
 
 // Create a connection pool instead of a single connection
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "DZ12005@SQL!",
-  database: process.env.DB_NAME || "bus_fms",
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+let pool;
+let promisePool;
 
-// Promisify for Node.js async/await.
-const promisePool = pool.promise();
+if (process.env.DB_HOST) {
+  pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+  });
 
-// Test connection
-pool.getConnection((err, connection) => {
-  if (err) {
-    console.error("DB connection failed:", err);
-  } else {
-    console.log("Connected to MySQL");
-    connection.release();
-  }
-});
+  // Promisify for Node.js async/await.
+  promisePool = pool.promise();
+
+  // Test connection
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error("DB connection failed:", err);
+    } else {
+      console.log("Connected to MySQL");
+      connection.release();
+    }
+  });
+} else {
+  console.warn("DB_HOST not set. Database features will not work.");
+}
+
+// Helper to get pool or throw
+const getDb = () => {
+  if (!promisePool) throw new Error("Database not configured. Please set DB_HOST.");
+  return promisePool;
+};
 
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
@@ -57,7 +70,7 @@ app.post("/api/login", async (req, res) => {
   }
 
   try {
-    const [users] = await promisePool.query("SELECT * FROM Users WHERE username = ?", [username]);
+    const [users] = await getDb().query("SELECT * FROM Users WHERE username = ?", [username]);
     
     if (users.length === 0) {
       return res.status(401).json({ error: "User does not exist, please signup!" });
@@ -97,7 +110,7 @@ app.post("/api/signup", async (req, res) => {
 
   try {
     // Check if username already exists
-    const [existingUsers] = await promisePool.query("SELECT * FROM Users WHERE username = ?", [username]);
+    const [existingUsers] = await getDb().query("SELECT * FROM Users WHERE username = ?", [username]);
 
     if (existingUsers.length > 0) {
       return res.status(400).json({ error: "Username already exists" });
@@ -107,7 +120,7 @@ app.post("/api/signup", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert new user
-    await promisePool.query("INSERT INTO Users (username, password) VALUES (?, ?)", [username, hashedPassword]);
+    await getDb().query("INSERT INTO Users (username, password) VALUES (?, ?)", [username, hashedPassword]);
     
     res.json({ success: true });
   } catch (err) {
@@ -118,7 +131,7 @@ app.post("/api/signup", async (req, res) => {
 
 app.get("/api/students", async (req, res) => {
   try {
-    const [results] = await promisePool.query("SELECT * FROM Students");
+    const [results] = await getDb().query("SELECT * FROM Students");
     res.json(results);
   } catch (err) {
     res.status(500).json(err);
@@ -133,13 +146,13 @@ app.post("/api/addstudents", async (req, res) => {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    const [existing] = await promisePool.query("SELECT * FROM Students WHERE Name = ?", [Name]);
+    const [existing] = await getDb().query("SELECT * FROM Students WHERE Name = ?", [Name]);
 
     if (existing.length > 0) {
       return res.status(400).json({ error: "Student already exists" });
     }
 
-    await promisePool.query(
+    await getDb().query(
       "INSERT INTO Students(Name, Grade, BusRouteId, BoardingPoint) VALUES (?, ?, ?, ?)",
       [Name, Grade, BusRouteID, BoardingPoint]
     );
@@ -162,7 +175,7 @@ app.post("/api/addroutes", async (req, res) => {
       return res.status(400).json({ error: "Start Point and End Point are required" });
     }
 
-    await promisePool.query(
+    await getDb().query(
       "INSERT INTO Routes(StartPoint, EndPoint, RouteName) VALUES (?, ?, ?)",
       [StartPoint, EndPoint, `Route ${StartPoint} to ${EndPoint}`] // Generating a name
     );
@@ -181,7 +194,7 @@ app.post("/api/addbuses", async (req, res) => {
       return res.status(400).json({ error: "Bus Number and Capacity are required" });
     }
 
-    await promisePool.query(
+    await getDb().query(
       "INSERT INTO Buses(BusNumber, Capacity, RouteID) VALUES (?, ?, ?)",
       [BusNumber, Capacity, RouteID || null]
     );
@@ -200,7 +213,7 @@ app.post("/api/adddrivers", async (req, res) => {
       return res.status(400).json({ error: "Name and License Number are required" });
     }
 
-    await promisePool.query(
+    await getDb().query(
       "INSERT INTO Drivers(Name, LicenseNumber, Phone) VALUES (?, ?, ?)",
       [Name, LicenseNumber, Phone]
     );
@@ -219,7 +232,7 @@ app.post("/api/addmaintenance", async (req, res) => {
       return res.status(400).json({ error: "Bus ID and Date are required" });
     }
 
-    await promisePool.query(
+    await getDb().query(
       "INSERT INTO MaintenanceLogs(BusID, Description, Date) VALUES (?, ?, ?)",
       [BusID, Description, Date]
     );
@@ -238,7 +251,7 @@ app.post("/api/addincidents", async (req, res) => {
       return res.status(400).json({ error: "Bus ID and Date are required" });
     }
 
-    await promisePool.query(
+    await getDb().query(
       "INSERT INTO Incidents(BusID, Description, Date) VALUES (?, ?, ?)",
       [BusID, Description, Date]
     );
@@ -251,7 +264,7 @@ app.post("/api/addincidents", async (req, res) => {
 
 app.get("/api/routes", async (req, res) => {
   try {
-    const [results] = await promisePool.query("SELECT * FROM Routes");
+    const [results] = await getDb().query("SELECT * FROM Routes");
     res.json(results);
   } catch (err) {
     res.status(500).json(err);
@@ -260,7 +273,7 @@ app.get("/api/routes", async (req, res) => {
 
 app.get("/api/buses", async (req, res) => {
   try {
-    const [results] = await promisePool.query("SELECT * FROM Buses");
+    const [results] = await getDb().query("SELECT * FROM Buses");
     res.json(results);
   } catch (err) {
     res.status(500).json(err);
@@ -269,7 +282,7 @@ app.get("/api/buses", async (req, res) => {
 
 app.get("/api/drivers", async (req, res) => {
   try {
-    const [results] = await promisePool.query("SELECT * FROM Drivers");
+    const [results] = await getDb().query("SELECT * FROM Drivers");
     res.json(results);
   } catch (err) {
     res.status(500).json(err);
@@ -278,7 +291,7 @@ app.get("/api/drivers", async (req, res) => {
 
 app.get("/api/maintenance", async (req, res) => {
   try {
-    const [results] = await promisePool.query("SELECT * FROM MaintenanceLogs");
+    const [results] = await getDb().query("SELECT * FROM MaintenanceLogs");
     res.json(results);
   } catch (err) {
     res.status(500).json(err);
@@ -287,7 +300,7 @@ app.get("/api/maintenance", async (req, res) => {
 
 app.get("/api/incidents", async (req, res) => {
   try {
-    const [results] = await promisePool.query("SELECT * FROM Incidents");
+    const [results] = await getDb().query("SELECT * FROM Incidents");
     res.json(results);
   } catch (err) {
     res.status(500).json(err);
@@ -298,7 +311,7 @@ app.get("/api/incidents", async (req, res) => {
 app.delete("/api/deleteStudent/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    await promisePool.query("DELETE FROM Students WHERE StudentID = ?", [id]);
+    await getDb().query("DELETE FROM Students WHERE StudentID = ?", [id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json(err);
@@ -310,17 +323,17 @@ app.delete("/api/deleteRoute/:id", async (req, res) => {
   try {
     const id = req.params.id;
     // Check for dependencies in Buses table
-    const [buses] = await promisePool.query("SELECT * FROM Buses WHERE RouteID = ?", [id]);
+    const [buses] = await getDb().query("SELECT * FROM Buses WHERE RouteID = ?", [id]);
     if (buses.length > 0) {
         return res.status(400).json({ message: "Cannot delete route. It is assigned to one or more buses." });
     }
     // Check for dependencies in Students table
-    const [students] = await promisePool.query("SELECT * FROM Students WHERE BusRouteId = ?", [id]);
+    const [students] = await getDb().query("SELECT * FROM Students WHERE BusRouteId = ?", [id]);
     if (students.length > 0) {
         return res.status(400).json({ message: "Cannot delete route. It is assigned to one or more students." });
     }
 
-    await promisePool.query("DELETE FROM Routes WHERE RouteID = ?", [id]);
+    await getDb().query("DELETE FROM Routes WHERE RouteID = ?", [id]);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -334,13 +347,13 @@ app.delete("/api/deleteBus/:id", async (req, res) => {
     const id = req.params.id;
     
     // Check for dependencies in MaintenanceLogs
-    const [maintenance] = await promisePool.query("SELECT * FROM MaintenanceLogs WHERE BusID = ?", [id]);
+    const [maintenance] = await getDb().query("SELECT * FROM MaintenanceLogs WHERE BusID = ?", [id]);
     if (maintenance.length > 0) {
         return res.status(400).json({ message: "Cannot delete bus. It has associated maintenance logs." });
     }
 
     // Check for dependencies in Incidents
-    const [incidents] = await promisePool.query("SELECT * FROM Incidents WHERE BusID = ?", [id]);
+    const [incidents] = await getDb().query("SELECT * FROM Incidents WHERE BusID = ?", [id]);
     if (incidents.length > 0) {
         return res.status(400).json({ message: "Cannot delete bus. It has associated incidents." });
     }
@@ -351,7 +364,7 @@ app.delete("/api/deleteBus/:id", async (req, res) => {
     // Schema read earlier: Drivers (DriverID, Name, LicenseNumber, Phone). No BusID.
     // So no dependency check needed for Drivers unless schema changed.
     
-    await promisePool.query("DELETE FROM Buses WHERE BusID = ?", [id]);
+    await getDb().query("DELETE FROM Buses WHERE BusID = ?", [id]);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -363,7 +376,7 @@ app.delete("/api/deleteBus/:id", async (req, res) => {
 app.delete("/api/deleteDriver/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    await promisePool.query("DELETE FROM Drivers WHERE DriverID = ?", [id]);
+    await getDb().query("DELETE FROM Drivers WHERE DriverID = ?", [id]);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -375,7 +388,7 @@ app.delete("/api/deleteDriver/:id", async (req, res) => {
 app.delete("/api/deleteMaintainence/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    await promisePool.query("DELETE FROM MaintenanceLogs WHERE LogID = ?", [id]);
+    await getDb().query("DELETE FROM MaintenanceLogs WHERE LogID = ?", [id]);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -387,7 +400,7 @@ app.delete("/api/deleteMaintainence/:id", async (req, res) => {
 app.delete("/api/deleteIncident/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    await promisePool.query("DELETE FROM Incidents WHERE IncidentID = ?", [id]);
+    await getDb().query("DELETE FROM Incidents WHERE IncidentID = ?", [id]);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -398,10 +411,10 @@ app.delete("/api/deleteIncident/:id", async (req, res) => {
 // Get Dashboard Stats
 app.get("/api/dashboard-stats", async (req, res) => {
   try {
-    const [students] = await promisePool.query("SELECT COUNT(*) as count FROM Students");
-    const [buses] = await promisePool.query("SELECT COUNT(*) as count FROM Buses");
-    const [routes] = await promisePool.query("SELECT COUNT(*) as count FROM Routes");
-    const [incidents] = await promisePool.query("SELECT COUNT(*) as count FROM Incidents");
+    const [students] = await getDb().query("SELECT COUNT(*) as count FROM Students");
+    const [buses] = await getDb().query("SELECT COUNT(*) as count FROM Buses");
+    const [routes] = await getDb().query("SELECT COUNT(*) as count FROM Routes");
+    const [incidents] = await getDb().query("SELECT COUNT(*) as count FROM Incidents");
 
     res.json({
       students: students[0].count,
@@ -416,6 +429,10 @@ app.get("/api/dashboard-stats", async (req, res) => {
 });
 
 app.get("/api/config/firebase", (req, res) => {
+  if (!process.env.FIREBASE_API_KEY) {
+    console.error("FIREBASE_API_KEY is missing in environment variables");
+  }
+  
   res.json({
     apiKey: process.env.FIREBASE_API_KEY,
     authDomain: process.env.FIREBASE_AUTH_DOMAIN,
