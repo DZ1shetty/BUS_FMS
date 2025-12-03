@@ -1,0 +1,63 @@
+import { signInWithGoogle, checkAuthState } from '../config/auth.js';
+
+// Handle Google Sign-In
+window.handleGoogleSignIn = async function() {
+  const loaderOverlay = document.querySelector('.loader-overlay');
+  loaderOverlay.style.display = 'flex';
+
+  const result = await signInWithGoogle();
+  
+  loaderOverlay.style.display = 'none';
+
+  if (result.success) {
+    const user = result.user;
+    console.log('Google Sign-In successful:', user);
+    
+    // Store user info in sessionStorage
+    sessionStorage.setItem('user', JSON.stringify({
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      provider: 'google'
+    }));
+
+    // Show success toast
+    showToast('Login successful! Redirecting...', 'success');
+    
+    // Redirect to homepage
+    setTimeout(() => {
+      window.location.href = '../homepage/homepage.html';
+    }, 1500);
+  } else {
+    showToast('Google Sign-In failed: ' + result.error, 'error');
+  }
+};
+
+// Check if user is already logged in
+checkAuthState((user) => {
+  if (user) {
+    console.log('User is already logged in:', user);
+    // Optionally redirect to homepage if already logged in
+    // window.location.href = '../homepage/homepage.html';
+  }
+});
+
+// Toast notification function
+function showToast(message, type = 'info') {
+  const toastContainer = document.querySelector('.toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  
+  toastContainer.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 100);
+  
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
