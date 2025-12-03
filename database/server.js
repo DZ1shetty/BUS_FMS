@@ -59,7 +59,9 @@ if (process.env.DB_HOST) {
 
 // Helper to get pool or throw
 const getDb = () => {
-  if (!promisePool) throw new Error("Database not configured. Please set DB_HOST.");
+  if (!promisePool) {
+    throw new Error("Database not configured. Please set DB_HOST environment variable in Vercel.");
+  }
   return promisePool;
 };
 
@@ -92,7 +94,10 @@ app.post("/api/login", async (req, res) => {
       res.status(401).json({ error: "Invalid credentials" });
     }
   } catch (err) {
-    console.error(err);
+    console.error("Login Error:", err);
+    if (err.message.includes("Database not configured")) {
+      return res.status(503).json({ error: "Database connection failed. Please configure DB_HOST in Vercel settings." });
+    }
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -124,7 +129,10 @@ app.post("/api/signup", async (req, res) => {
     
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error("Signup Error:", err);
+    if (err.message.includes("Database not configured")) {
+      return res.status(503).json({ error: "Database connection failed. Please configure DB_HOST in Vercel settings." });
+    }
     res.status(500).json({ error: "Internal server error" });
   }
 });
