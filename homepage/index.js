@@ -44,7 +44,7 @@ window.addEventListener("DOMContentLoaded", () => {
 async function loadDashboardStats() {
   try {
     // Add timestamp to prevent caching
-    const response = await fetch(`http://localhost:5000/api/dashboard-stats?t=${new Date().getTime()}`);
+    const response = await fetch(`/api/dashboard-stats?t=${new Date().getTime()}`);
     if (response.ok) {
       const stats = await response.json();
       document.getElementById('stat-students').textContent = stats.students || 0;
@@ -187,7 +187,7 @@ async function initCharts() {
 async function updateCharts() {
   try {
       // Fetch Stats for Distribution
-      const statsRes = await fetch(`http://localhost:5000/api/dashboard-stats?t=${Date.now()}`);
+      const statsRes = await fetch(`/api/dashboard-stats?t=${Date.now()}`);
       const stats = await statsRes.json();
       
       if (distributionChart) {
@@ -196,7 +196,7 @@ async function updateCharts() {
       }
 
       // Fetch Incidents for Timeline
-      const incRes = await fetch(`http://localhost:5000/api/incidents?t=${Date.now()}`);
+      const incRes = await fetch(`/api/incidents?t=${Date.now()}`);
       const incidents = await incRes.json();
       
       // Process incidents by date (last 7 days)
@@ -327,7 +327,7 @@ window.sortTable = function(key) {
 async function fetchData(endpoint) {
   showLoading();
   try {
-    const response = await fetch(`http://localhost:5000/api/${endpoint}`);
+    const response = await fetch(`/api/${endpoint}`);
     if (!response.ok) throw new Error("Failed to fetch");
     const data = await response.json();
     return data;
@@ -521,7 +521,7 @@ async function saveData(section) {
   }
 
   try {
-    const response = await fetch(`http://localhost:5000/api/add${section}`, {
+    const response = await fetch(`/api/add${section}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
@@ -575,7 +575,7 @@ async function deleteItem(endpoint, refreshCallback) {
   
   showLoading();
   try {
-    const response = await fetch(`http://localhost:5000/api/${endpoint}`, {
+    const response = await fetch(`/api/${endpoint}`, {
       method: "DELETE"
     });
     

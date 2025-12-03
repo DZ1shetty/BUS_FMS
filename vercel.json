@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.js" }
+  ],
+  "redirects": [
+    { "source": "/", "destination": "/login/login.html", "permanent": false }
+  ]
+}
