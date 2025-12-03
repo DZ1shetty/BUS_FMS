@@ -142,7 +142,11 @@ app.get("/api/students", async (req, res) => {
     const [results] = await getDb().query("SELECT * FROM Students");
     res.json(results);
   } catch (err) {
-    res.status(500).json(err);
+    console.error("Students API Error:", err);
+    if (err.message.includes("Database not configured")) {
+      return res.status(503).json({ error: "Database not configured" });
+    }
+    res.status(500).json({ error: "Database connection failed. Check Vercel logs." });
   }
 });
 
@@ -275,7 +279,8 @@ app.get("/api/routes", async (req, res) => {
     const [results] = await getDb().query("SELECT * FROM Routes");
     res.json(results);
   } catch (err) {
-    res.status(500).json(err);
+    console.error("Routes API Error:", err);
+    res.status(500).json({ error: "Database connection failed" });
   }
 });
 
@@ -284,7 +289,8 @@ app.get("/api/buses", async (req, res) => {
     const [results] = await getDb().query("SELECT * FROM Buses");
     res.json(results);
   } catch (err) {
-    res.status(500).json(err);
+    console.error("Buses API Error:", err);
+    res.status(500).json({ error: "Database connection failed" });
   }
 });
 
@@ -293,7 +299,8 @@ app.get("/api/drivers", async (req, res) => {
     const [results] = await getDb().query("SELECT * FROM Drivers");
     res.json(results);
   } catch (err) {
-    res.status(500).json(err);
+    console.error("Drivers API Error:", err);
+    res.status(500).json({ error: "Database connection failed" });
   }
 });
 
@@ -302,7 +309,8 @@ app.get("/api/maintenance", async (req, res) => {
     const [results] = await getDb().query("SELECT * FROM MaintenanceLogs");
     res.json(results);
   } catch (err) {
-    res.status(500).json(err);
+    console.error("Maintenance API Error:", err);
+    res.status(500).json({ error: "Database connection failed" });
   }
 });
 
@@ -311,7 +319,8 @@ app.get("/api/incidents", async (req, res) => {
     const [results] = await getDb().query("SELECT * FROM Incidents");
     res.json(results);
   } catch (err) {
-    res.status(500).json(err);
+    console.error("Incidents API Error:", err);
+    res.status(500).json({ error: "Database connection failed" });
   }
 });
 
