@@ -5,8 +5,23 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const path = require("path");
 const bcrypt = require("bcrypt");
+const compression = require("compression");
+const helmet = require("helmet");
 
 const app = express();
+app.use(compression());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://apis.google.com", "https://www.gstatic.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https://*.googleusercontent.com"],
+      connectSrc: ["'self'", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "https://www.googleapis.com"]
+    },
+  },
+}));
 app.use(cors());
 app.use(express.json()); // To parse JSON bodies
 
@@ -430,16 +445,18 @@ app.delete("/api/deleteIncident/:id", async (req, res) => {
 // Get Dashboard Stats
 app.get("/api/dashboard-stats", async (req, res) => {
   try {
-    const [students] = await getDb().query("SELECT COUNT(*) as count FROM Students");
-    const [buses] = await getDb().query("SELECT COUNT(*) as count FROM Buses");
-    const [routes] = await getDb().query("SELECT COUNT(*) as count FROM Routes");
-    const [incidents] = await getDb().query("SELECT COUNT(*) as count FROM Incidents");
+    const [studentsResult, busesResult, routesResult, incidentsResult] = await Promise.all([
+      getDb().query("SELECT COUNT(*) as count FROM Students"),
+      getDb().query("SELECT COUNT(*) as count FROM Buses"),
+      getDb().query("SELECT COUNT(*) as count FROM Routes"),
+      getDb().query("SELECT COUNT(*) as count FROM Incidents")
+    ]);
 
     res.json({
-      students: students[0].count,
-      buses: buses[0].count,
-      routes: routes[0].count,
-      incidents: incidents[0].count
+      students: studentsResult[0][0].count,
+      buses: busesResult[0][0].count,
+      routes: routesResult[0][0].count,
+      incidents: incidentsResult[0][0].count
     });
   } catch (err) {
     console.error(err);
