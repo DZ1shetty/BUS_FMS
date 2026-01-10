@@ -5,6 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node database/server.js",
+    "frontend": "cd frontend && npm run dev",
+    "backend": "node database/server.js",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -18,5 +21,8 @@
     "express": "^5.1.0",
     "firebase": "^12.6.0",
     "mysql2": "^3.14.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

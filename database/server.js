@@ -10,20 +10,11 @@ const app = express();
 app.use(cors());
 app.use(express.json()); // To parse JSON bodies
 
-// Serve static files with cache control
-app.use(express.static(path.join(__dirname, '../'), {
-  maxAge: '1d', // Cache for 1 day
-  setHeaders: (res, path) => {
-    if (path.endsWith('.html')) {
-      // Don't cache HTML to ensure updates are seen immediately
-      res.setHeader('Cache-Control', 'no-cache');
-    }
-  }
-}));
+// Old static serving removed as we migrated to React
+// app.use(express.static(path.join(__dirname, '../')));
 
-// Redirect root to login page
 app.get('/', (req, res) => {
-  res.redirect('/login/login.html');
+  res.send('Bus Fleet Management System API is running. Access the frontend via the React dev server.');
 });
 
 // Create a connection pool instead of a single connection
@@ -75,7 +66,7 @@ app.post("/api/login", async (req, res) => {
 
   try {
     const [users] = await getDb().query("SELECT * FROM Users WHERE username = ?", [username]);
-    
+
     if (users.length === 0) {
       return res.status(401).json({ error: "User does not exist, please signup!" });
     }
@@ -83,11 +74,11 @@ app.post("/api/login", async (req, res) => {
     const user = users[0];
     // Check if password matches (handling both plain text for legacy and hashed for new)
     const match = await bcrypt.compare(password, user.password);
-    
+
     // Fallback for plain text passwords (if any exist from before optimization)
     if (!match && password === user.password) {
-        // Ideally, we should hash it and update the DB here, but let's just allow login for now
-        return res.json({ success: true });
+      // Ideally, we should hash it and update the DB here, but let's just allow login for now
+      return res.json({ success: true });
     }
 
     if (match) {
@@ -128,7 +119,7 @@ app.post("/api/signup", async (req, res) => {
 
     // Insert new user
     await getDb().query("INSERT INTO Users (username, password) VALUES (?, ?)", [username, hashedPassword]);
-    
+
     res.json({ success: true });
   } catch (err) {
     console.error("Signup Error:", err);
@@ -184,7 +175,7 @@ app.post("/api/addroutes", async (req, res) => {
     // RouteID is auto-increment, usually we don't insert it manually unless specified.
     // Assuming frontend sends it but we might ignore it or use it if not auto-increment.
     // Based on schema, RouteID is AUTO_INCREMENT. So we should ignore it or not require it.
-    
+
     if (!StartPoint || !EndPoint) {
       return res.status(400).json({ error: "Start Point and End Point are required" });
     }
@@ -344,12 +335,12 @@ app.delete("/api/deleteRoute/:id", async (req, res) => {
     // Check for dependencies in Buses table
     const [buses] = await getDb().query("SELECT * FROM Buses WHERE RouteID = ?", [id]);
     if (buses.length > 0) {
-        return res.status(400).json({ message: "Cannot delete route. It is assigned to one or more buses." });
+      return res.status(400).json({ message: "Cannot delete route. It is assigned to one or more buses." });
     }
     // Check for dependencies in Students table
     const [students] = await getDb().query("SELECT * FROM Students WHERE BusRouteId = ?", [id]);
     if (students.length > 0) {
-        return res.status(400).json({ message: "Cannot delete route. It is assigned to one or more students." });
+      return res.status(400).json({ message: "Cannot delete route. It is assigned to one or more students." });
     }
 
     await getDb().query("DELETE FROM Routes WHERE RouteID = ?", [id]);
@@ -364,17 +355,17 @@ app.delete("/api/deleteRoute/:id", async (req, res) => {
 app.delete("/api/deleteBus/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    
+
     // Check for dependencies in MaintenanceLogs
     const [maintenance] = await getDb().query("SELECT * FROM MaintenanceLogs WHERE BusID = ?", [id]);
     if (maintenance.length > 0) {
-        return res.status(400).json({ message: "Cannot delete bus. It has associated maintenance logs." });
+      return res.status(400).json({ message: "Cannot delete bus. It has associated maintenance logs." });
     }
 
     // Check for dependencies in Incidents
     const [incidents] = await getDb().query("SELECT * FROM Incidents WHERE BusID = ?", [id]);
     if (incidents.length > 0) {
-        return res.status(400).json({ message: "Cannot delete bus. It has associated incidents." });
+      return res.status(400).json({ message: "Cannot delete bus. It has associated incidents." });
     }
 
     // Check for dependencies in Drivers (if there's a link, schema didn't show direct link from Driver to Bus, but let's check schema again if needed. 
@@ -382,7 +373,7 @@ app.delete("/api/deleteBus/:id", async (req, res) => {
     // Wait, previous schema had AssignedBusId. Let's check the current schema.sql content I read earlier.
     // Schema read earlier: Drivers (DriverID, Name, LicenseNumber, Phone). No BusID.
     // So no dependency check needed for Drivers unless schema changed.
-    
+
     await getDb().query("DELETE FROM Buses WHERE BusID = ?", [id]);
     res.json({ success: true });
   } catch (err) {
@@ -451,7 +442,7 @@ app.get("/api/config/firebase", (req, res) => {
   if (!process.env.FIREBASE_API_KEY) {
     console.error("FIREBASE_API_KEY is missing in environment variables");
   }
-  
+
   res.json({
     apiKey: process.env.FIREBASE_API_KEY,
     authDomain: process.env.FIREBASE_AUTH_DOMAIN,

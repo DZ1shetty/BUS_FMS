@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    html {
+        @apply antialiased;
+    }
+
+    body {
+        font-family: 'Rajdhani', sans-serif;
+        @apply min-h-screen bg-[#0f172a] text-white;
+    }
+}
+
+@layer components {
+
+    /* Mission Control Cards */
+    .card {
+        @apply rounded-xl p-6 shadow-xl transition-all border bg-[#1e293b] border-slate-700/50 text-white shadow-black/20;
+    }
+
+    .btn-primary {
+        @apply bg-primary text-slate-900 font-bold py-2.5 px-6 rounded-lg transition-all hover:brightness-110 active:scale-95 uppercase tracking-widest text-xs shadow-lg shadow-primary/20 flex items-center justify-center gap-2;
+    }
+
+    .input-field {
+        @apply w-full rounded-lg p-3 transition-all outline-none border text-sm bg-[#0f172a]/50 border-slate-700 text-white focus:border-primary;
+    }
+}
+
+/* Tactical Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-[#0f172a];
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 rounded-full border-2 border-[#0f172a] hover:bg-slate-600;
+}
