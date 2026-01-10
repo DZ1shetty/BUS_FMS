@@ -12,8 +12,8 @@ frontend/.env
 frontend/.env.local
 
 # Build
-dist/
-frontend/dist/
+# dist/
+# frontend/dist/
 .vercel
 .output/
 
