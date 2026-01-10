@@ -81,14 +81,19 @@ The server will start at `http://localhost:5000`.
 ### 6. Access the Application
 Open your browser and navigate to `http://localhost:5000`. You will be redirected to the login page.
 
+## Vercel Deployment
+
+1. Connect your GitHub repository to Vercel.
+2. In the Vercel Dashboard, go to **Project Settings** > **Environment Variables**.
+3. Add all variables from your `.env` (DB credentials and Firebase config).
+4. Vercel will automatically build the frontend and deploy the serverless functions.
+
 ## Project Structure
 
-- `database/`: Backend server code (`server.js`) and SQL scripts.
-- `homepage/`: Main dashboard frontend (`index.html`, `index.js`).
-- `login/`: Login page.
-- `signup/`: Signup page.
-- `styles/`: CSS stylesheets.
-- `images/`: Static images.
+- `api/`: Entry point for Vercel serverless functions.
+- `database/`: Backend logic and SQL schema.
+- `frontend/`: React application (Source of truth for the UI).
+- `vercel.json`: Deployment configuration.
 
 ## Contributing
 
