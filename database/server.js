@@ -25,7 +25,7 @@ const pool = mysql.createPool({
   host: process.env.AIVEN_DB_HOST,
   user: process.env.AIVEN_DB_USER,
   password: process.env.AIVEN_DB_PASSWORD,
-  database: process.env.AIVEN_DB_NAME,
+  database: process.env.AIVEN_DB_NAME || "bus_fms",
   port: Number(process.env.AIVEN_DB_PORT),
   ssl: { rejectUnauthorized: true },
   waitForConnections: true,
