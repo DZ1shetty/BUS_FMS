@@ -3,13 +3,23 @@
 @tailwind utilities;
 
 @layer base {
+    :root {
+        --primary-rgb: 0, 212, 255;
+        /* #00D4FF */
+    }
+
     html {
         @apply antialiased;
     }
 
     body {
         font-family: 'Rajdhani', sans-serif;
-        @apply min-h-screen bg-[#0f172a] text-white;
+        @apply min-h-screen bg-[#0f172a] text-white overflow-x-hidden;
+        background-image:
+            linear-gradient(rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95)),
+            linear-gradient(to right, rgba(0, 212, 255, 0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(0, 212, 255, 0.05) 1px, transparent 1px);
+        background-size: 100% 100%, 40px 40px, 40px 40px;
     }
 }
 
@@ -17,21 +27,54 @@
 
     /* Mission Control Cards */
     .card {
-        @apply rounded-xl p-6 shadow-xl transition-all border bg-[#1e293b] border-slate-700/50 text-white shadow-black/20;
+        @apply rounded-xl p-6 shadow-2xl transition-all border bg-[#1e293b]/80 border-slate-700/50 text-white shadow-black/40 backdrop-blur-sm relative overflow-hidden;
+    }
+
+    .card::before {
+        content: '';
+        @apply absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50;
+    }
+
+    .card:hover {
+        @apply border-primary/30 shadow-primary/10 translate-y-[-2px];
     }
 
     .btn-primary {
-        @apply bg-primary text-slate-900 font-bold py-2.5 px-6 rounded-lg transition-all hover:brightness-110 active:scale-95 uppercase tracking-widest text-xs shadow-lg shadow-primary/20 flex items-center justify-center gap-2;
+        @apply bg-primary text-slate-900 font-bold py-2.5 px-6 rounded-lg transition-all hover:brightness-110 active:scale-95 uppercase tracking-widest text-xs shadow-[0_0_20px_#00D4FF4d] flex items-center justify-center gap-2 relative overflow-hidden;
+    }
+
+    .btn-danger {
+        @apply bg-red-500/10 text-red-400 border border-red-500/20 font-bold py-2 px-4 rounded-lg transition-all hover:bg-red-500/20 hover:border-red-500/40 active:scale-95 uppercase tracking-widest text-xs flex items-center justify-center gap-2;
     }
 
     .input-field {
-        @apply w-full rounded-lg p-3 transition-all outline-none border text-sm bg-[#0f172a]/50 border-slate-700 text-white focus:border-primary;
+        @apply w-full rounded-lg p-3 transition-all outline-none border text-sm bg-[#0f172a]/80 border-slate-700 text-white focus:border-primary focus:shadow-[0_0_15px_#00D4FF33] placeholder:text-slate-600;
     }
+
+    .table-row {
+        @apply border-b border-slate-700/30 hover:bg-white/5 transition-colors;
+    }
+}
+
+/* Animations included in Tailwind extend or here if custom */
+@keyframes scan {
+    0% {
+        background-position: 0% 0%;
+    }
+
+    100% {
+        background-position: 100% 100%;
+    }
+}
+
+.animate-scan {
+    animation: scan 2s linear infinite;
 }
 
 /* Tactical Scrollbar */
 ::-webkit-scrollbar {
-    width: 10px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -39,5 +82,27 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    @apply bg-slate-700 rounded-full border-2 border-[#0f172a] hover:bg-slate-600;
+    @apply bg-slate-700 rounded-full border border-[#0f172a] hover:bg-primary/50 transition-colors;
+}
+
+/* Skeleton Loading Animation */
+.skeleton {
+    @apply bg-slate-700/30 relative overflow-hidden rounded;
+}
+
+.skeleton::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full;
+    background-image: linear-gradient(90deg,
+            rgba(255, 255, 255, 0) 0,
+            rgba(255, 255, 255, 0.05) 20%,
+            rgba(255, 255, 255, 0.1) 60%,
+            rgba(255, 255, 255, 0));
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%);
+    }
 }

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users,
     Route as RouteIcon,
@@ -47,6 +48,10 @@ ChartJS.register(
     Legend
 );
 
+const SkeletonLoader = ({ className }) => (
+    <div className={`skeleton ${className}`} />
+);
+
 const Dashboard = () => {
     const [activeSection, setActiveSection] = useState('students');
     const [stats, setStats] = useState({ students: 0, buses: 0, routes: 0, incidents: 0 });
@@ -58,6 +63,7 @@ const Dashboard = () => {
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
+
     useEffect(() => {
         document.documentElement.classList.add('dark');
         fetchStats();
@@ -184,13 +190,44 @@ const Dashboard = () => {
         }
     };
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { y: 20, opacity: 0 },
+        visible: {
+            y: 0,
+            opacity: 1,
+            transition: { type: "spring", stiffness: 300, damping: 24 }
+        }
+    };
+
     return (
         <div className="flex h-screen bg-dark transition-colors duration-300 overflow-hidden font-rajdhani">
             {/* Sidebar */}
-            <aside className="bg-dark-surface border-r border-slate-700/50 flex flex-col transition-all duration-300 overflow-hidden" style={{ width: isSidebarOpen ? '256px' : '0' }}>
+            <motion.aside
+                initial={{ x: -250 }}
+                animate={{ x: 0, width: isSidebarOpen ? '256px' : '0' }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="bg-dark-surface border-r border-slate-700/50 flex flex-col overflow-hidden z-20"
+            >
                 <div className="p-6 flex items-center space-x-3 border-b border-slate-700/50">
                     <div className="w-10 h-10 bg-primary text-slate-900 flex items-center justify-center font-bold text-xl rounded-tr-xl rounded-bl-xl shadow-lg shadow-primary/20">B</div>
-                    <h1 className="text-xl font-bold tracking-widest uppercase text-white overflow-hidden whitespace-nowrap">BusFleet</h1>
+                    <motion.h1
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-xl font-bold tracking-widest uppercase text-white overflow-hidden whitespace-nowrap"
+                    >
+                        BusFleet
+                    </motion.h1>
                 </div>
 
                 <nav className="flex-1 py-8 overflow-y-auto">
@@ -205,14 +242,22 @@ const Dashboard = () => {
                         >
                             <item.icon size={20} />
                             <span className="font-semibold uppercase tracking-wider text-sm">{item.label}</span>
+                            {activeSection === item.id && (
+                                <motion.div
+                                    layoutId="active-pill"
+                                    className="absolute left-0 w-1 h-8 bg-primary rounded-r"
+                                    initial={false}
+                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                />
+                            )}
                         </button>
                     ))}
                 </nav>
-            </aside>
+            </motion.aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-hidden">
-                {/* Header content unchanged except user name logic */}
+            <main className="flex-1 flex flex-col overflow-hidden relative">
+                {/* Header content */}
                 <header className="h-20 bg-dark-surface/50 backdrop-blur-md border-b border-slate-700/50 flex items-center justify-between px-8 z-10 transition-all">
                     <div className="flex items-center space-x-4">
                         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 transition-colors border border-slate-700 rounded-lg text-slate-400 hover:text-primary"><Menu size={20} /></button>
@@ -229,19 +274,24 @@ const Dashboard = () => {
                     </div>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <motion.div
+                    className="flex-1 overflow-y-auto p-6 space-y-6"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                >
                     {/* Top Stats Overview - Compact Row */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <StatCard title="Students" value={stats.students} icon={Users} loading={loading} onClick={() => setActiveSection('students')} />
                         <StatCard title="Buses" value={stats.buses} icon={Bus} loading={loading} onClick={() => setActiveSection('buses')} />
                         <StatCard title="Routes" value={stats.routes} icon={RouteIcon} loading={loading} onClick={() => setActiveSection('routes')} />
                         <StatCard title="Incidents" value={stats.incidents} icon={AlertTriangle} loading={loading} danger onClick={() => setActiveSection('incidents')} />
-                    </div>
+                    </motion.div>
 
                     {/* Split Layout: Dashboard & Intelligence */}
                     <div className="flex flex-col xl:flex-row gap-6">
                         {/* LEFT: Management Hub (The Work Area) */}
-                        <div className="flex-1 space-y-6">
+                        <motion.div variants={itemVariants} className="flex-1 space-y-6">
                             {/* Action Toolbar */}
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4 p-4 rounded-xl border transition-colors bg-dark-surface/30 border-slate-700/30">
                                 <div className="relative w-full md:w-80">
@@ -257,9 +307,15 @@ const Dashboard = () => {
                             {/* Main Data Table */}
                             <div className="card overflow-x-auto min-h-[600px] shadow-2xl border-slate-700/50">
                                 {dataLoading ? (
-                                    <div className="h-[500px] flex flex-col items-center justify-center space-y-4 text-slate-500">
-                                        <Loader2 size={40} className="animate-spin text-primary" />
-                                        <p className="font-semibold uppercase tracking-widest text-[10px]">Synchronizing Matrix...</p>
+                                    <div className="space-y-4">
+                                        {[...Array(5)].map((_, i) => (
+                                            <div key={i} className="flex items-center space-x-4 p-4 border-b border-slate-700/30">
+                                                <SkeletonLoader className="w-1/4 h-6" />
+                                                <SkeletonLoader className="w-1/4 h-6" />
+                                                <SkeletonLoader className="w-1/4 h-6" />
+                                                <SkeletonLoader className="w-full h-8 ml-auto" />
+                                            </div>
+                                        ))}
                                     </div>
                                 ) : filteredData.length > 0 ? (
                                     <table className="w-full text-left">
@@ -272,32 +328,41 @@ const Dashboard = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-800/50">
-                                            {filteredData.map((row, idx) => (
-                                                <tr key={idx} className="hover:bg-primary/5 transition-colors group">
-                                                    {Object.values(row).map((val, i) => (
-                                                        <td key={i} className="p-4 text-xs font-bold text-white">{String(val)}</td>
-                                                    ))}
-                                                    <td className="p-4 text-right">
-                                                        <button
-                                                            onClick={() => {
-                                                                let idField = '';
-                                                                switch (activeSection) {
-                                                                    case 'students': idField = 'StudentID'; break;
-                                                                    case 'routes': idField = 'RouteID'; break;
-                                                                    case 'buses': idField = 'BusID'; break;
-                                                                    case 'drivers': idField = 'DriverID'; break;
-                                                                    case 'maintenance': idField = 'LogID'; break;
-                                                                    case 'incidents': idField = 'IncidentID'; break;
-                                                                }
-                                                                handleDelete(row[idField]);
-                                                            }}
-                                                            className="text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-all p-2"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            <AnimatePresence mode='popLayout'>
+                                                {filteredData.map((row, idx) => (
+                                                    <motion.tr
+                                                        key={idx}
+                                                        initial={{ opacity: 0, x: -20 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        exit={{ opacity: 0, x: 20 }}
+                                                        transition={{ delay: idx * 0.05 }}
+                                                        className="hover:bg-primary/5 transition-colors group table-row"
+                                                    >
+                                                        {Object.values(row).map((val, i) => (
+                                                            <td key={i} className="p-4 text-xs font-bold text-white">{String(val)}</td>
+                                                        ))}
+                                                        <td className="p-4 text-right">
+                                                            <button
+                                                                onClick={() => {
+                                                                    let idField = '';
+                                                                    switch (activeSection) {
+                                                                        case 'students': idField = 'StudentID'; break;
+                                                                        case 'routes': idField = 'RouteID'; break;
+                                                                        case 'buses': idField = 'BusID'; break;
+                                                                        case 'drivers': idField = 'DriverID'; break;
+                                                                        case 'maintenance': idField = 'LogID'; break;
+                                                                        case 'incidents': idField = 'IncidentID'; break;
+                                                                    }
+                                                                    handleDelete(row[idField]);
+                                                                }}
+                                                                className="text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-all p-2 hover:scale-110 active:scale-95"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </td>
+                                                    </motion.tr>
+                                                ))}
+                                            </AnimatePresence>
                                         </tbody>
                                     </table>
                                 ) : (
@@ -307,10 +372,10 @@ const Dashboard = () => {
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </motion.div>
 
                         {/* RIGHT: Intelligence Panel (Analytics Sidebar) */}
-                        <div className="w-full xl:w-[400px] space-y-6">
+                        <motion.div variants={itemVariants} className="w-full xl:w-[400px] space-y-6">
                             {/* Analytics 1 - Performance */}
                             <div className="card border-primary/10">
                                 <h3 className="text-primary text-[10px] font-bold uppercase tracking-[0.2em] mb-6 flex items-center">
@@ -324,10 +389,17 @@ const Dashboard = () => {
                                                 label: 'ACTIVITY',
                                                 data: [stats.students, 10, 15, 20, 25, stats.students],
                                                 borderColor: '#00D4FF',
-                                                backgroundColor: 'rgba(0, 212, 255, 0.05)',
+                                                backgroundColor: (context) => {
+                                                    const ctx = context.chart.ctx;
+                                                    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+                                                    gradient.addColorStop(0, 'rgba(0, 212, 255, 0.4)');
+                                                    gradient.addColorStop(1, 'rgba(0, 212, 255, 0)');
+                                                    return gradient;
+                                                },
                                                 fill: true,
                                                 tension: 0.5,
                                                 pointRadius: 4,
+                                                pointHoverRadius: 6,
                                                 pointBackgroundColor: '#00D4FF',
                                                 pointBorderColor: '#1E293B',
                                                 pointBorderWidth: 2
@@ -338,23 +410,25 @@ const Dashboard = () => {
                                             scales: {
                                                 y: {
                                                     grid: { color: '#334155', borderDash: [2, 4] },
-                                                    ticks: { color: '#475569', font: { size: 9, weight: '600' } }
+                                                    ticks: { color: '#475569', font: { size: 9, weight: '600', family: 'Rajdhani' } }
                                                 },
                                                 x: {
                                                     grid: { display: false },
-                                                    ticks: { color: '#475569', font: { size: 10, weight: '700' } }
+                                                    ticks: { color: '#475569', font: { size: 10, weight: '700', family: 'Rajdhani' } }
                                                 }
                                             },
                                             plugins: {
                                                 legend: { display: false },
                                                 tooltip: {
-                                                    backgroundColor: '#1E293B',
+                                                    backgroundColor: '#0F172A',
                                                     titleColor: '#00D4FF',
                                                     bodyColor: '#F1F5F9',
                                                     borderColor: '#475569',
                                                     borderWidth: 1,
                                                     padding: 10,
                                                     displayColors: false,
+                                                    titleFont: { family: 'Rajdhani', weight: 'bold' },
+                                                    bodyFont: { family: 'Rajdhani' },
                                                     callbacks: {
                                                         label: (context) => `VOL: ${context.parsed.y} UNITS`
                                                     }
@@ -376,7 +450,8 @@ const Dashboard = () => {
                                                 data: [stats.students, stats.buses, stats.routes],
                                                 backgroundColor: ['#00D4FF', '#0EA5E9', '#1E293B'],
                                                 borderWidth: 2,
-                                                borderColor: '#0f172a'
+                                                borderColor: '#0f172a',
+                                                hoverOffset: 10
                                             }]
                                         }}
                                         options={{
@@ -388,17 +463,19 @@ const Dashboard = () => {
                                                         color: '#94A3B8',
                                                         boxWidth: 8,
                                                         padding: 15,
-                                                        font: { size: 9, weight: '700' },
+                                                        font: { size: 9, weight: '700', family: 'Rajdhani' },
                                                         usePointStyle: true
                                                     }
                                                 },
                                                 tooltip: {
-                                                    backgroundColor: '#1E293B',
+                                                    backgroundColor: '#0F172A',
                                                     titleColor: '#00D4FF',
                                                     bodyColor: '#F1F5F9',
                                                     borderColor: '#475569',
                                                     borderWidth: 1,
                                                     padding: 10,
+                                                    titleFont: { family: 'Rajdhani', weight: 'bold' },
+                                                    bodyFont: { family: 'Rajdhani' },
                                                     callbacks: {
                                                         label: (context) => ` ${context.label}: ${context.parsed} COUNT`
                                                     }
@@ -410,61 +487,84 @@ const Dashboard = () => {
                             </div>
 
                             {/* Quick Instructions/Help Card */}
-                            <div className="p-6 border rounded-xl transition-colors bg-primary/5 border-primary/20">
-                                <p className="text-primary text-[10px] font-bold uppercase tracking-widest mb-2">Fleet Support</p>
-                                <p className="text-xs leading-relaxed italic text-slate-400">
-                                    "Managing {stats.buses} active units across {stats.routes} routes. Ensure all incidents are protocol-verified."
+                            <div className="p-6 border rounded-xl transition-colors bg-primary/5 border-primary/20 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-2 opacity-50"><AlertTriangle size={40} className="text-primary/20" /></div>
+                                <p className="text-primary text-[10px] font-bold uppercase tracking-widest mb-2 relative z-10">Fleet Support</p>
+                                <p className="text-xs leading-relaxed italic text-slate-400 relative z-10">
+                                    "Managing <span className="text-primary font-bold">{stats.buses}</span> active units across <span className="text-primary font-bold">{stats.routes}</span> routes. Ensure all incidents are protocol-verified."
                                 </p>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
-                </div>
+                </motion.div>
             </main>
 
             {/* Add Modal */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-dark-surface border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl relative animate-in fade-in zoom-in duration-200 overflow-hidden">
-                        <div className="p-6 border-b border-slate-800 flex justify-between items-center">
-                            <h3 className="text-xl font-bold uppercase tracking-widest text-white">Add New {activeSection.slice(0, -1)}</h3>
-                            <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white transition-colors"><X size={24} /></button>
-                        </div>
-                        <form onSubmit={handleAdd} className="p-6 space-y-4">
-                            <div className="grid grid-cols-1 gap-4">
-                                {getFormFields().map(field => (
-                                    <div key={field.name} className="space-y-2">
-                                        <label className="text-xs font-bold uppercase tracking-wider text-slate-400">{field.label}</label>
-                                        {field.type === 'textarea' ? (
-                                            <textarea className="input-field" rows="3" onChange={e => setFormData({ ...formData, [field.name]: e.target.value })} required />
-                                        ) : (
-                                            <input type={field.type} className="input-field" onChange={e => setFormData({ ...formData, [field.name]: e.target.value })} required />
-                                        )}
-                                    </div>
-                                ))}
+            <AnimatePresence>
+                {showModal && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-dark-surface border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-primary animate-pulse" />
+                            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                                <h3 className="text-xl font-bold uppercase tracking-widest text-white">Add New {activeSection.slice(0, -1)}</h3>
+                                <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white transition-colors"><X size={24} /></button>
                             </div>
-                            <div className="flex space-x-4 pt-4">
-                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 p-3 border border-slate-800 rounded-lg font-bold text-slate-400 hover:bg-slate-800 transition-all uppercase tracking-widest">Cancel</button>
-                                <button type="submit" className="flex-1 p-3 bg-primary text-slate-900 rounded-lg font-bold hover:brightness-110 transition-all uppercase tracking-widest shadow-lg shadow-primary/20">Establish Record</button>
-                            </div>
-                        </form>
+                            <form onSubmit={handleAdd} className="p-6 space-y-4">
+                                <div className="grid grid-cols-1 gap-4">
+                                    {getFormFields().map(field => (
+                                        <div key={field.name} className="space-y-2">
+                                            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">{field.label}</label>
+                                            {field.type === 'textarea' ? (
+                                                <textarea className="input-field" rows="3" onChange={e => setFormData({ ...formData, [field.name]: e.target.value })} required />
+                                            ) : (
+                                                <input type={field.type} className="input-field" onChange={e => setFormData({ ...formData, [field.name]: e.target.value })} required />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex space-x-4 pt-4">
+                                    <button type="button" onClick={() => setShowModal(false)} className="flex-1 p-3 border border-slate-800 rounded-lg font-bold text-slate-400 hover:bg-slate-800 transition-all uppercase tracking-widest">Cancel</button>
+                                    <button type="submit" className="flex-1 p-3 bg-primary text-slate-900 rounded-lg font-bold hover:brightness-110 transition-all uppercase tracking-widest shadow-lg shadow-primary/20">Establish Record</button>
+                                </div>
+                            </form>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 };
 
 const StatCard = ({ title, value, icon: Icon, loading, danger, onClick }) => (
-    <button onClick={onClick} className="card group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden text-left w-full">
-        <div className={`absolute top-0 left-0 w-1.5 h-full ${danger ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-primary shadow-[0_0_15px_rgba(0,212,255,0.5)]'}`} />
-        <div className="flex items-center space-x-5">
-            <div className={`w-14 h-14 rounded-xl flex items-center justify-center border transition-colors ${danger ? 'border-red-500/30 text-red-500 bg-red-500/5' : 'border-primary/30 text-primary bg-primary/5'}`}><Icon size={24} /></div>
+    <motion.button
+        whileHover={{ scale: 1.02, y: -5 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={onClick}
+        className="card group relative overflow-hidden text-left w-full h-full"
+    >
+        <div className={`absolute top-0 left-0 w-1.5 h-full transition-all duration-300 ${danger ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-primary shadow-[0_0_15px_rgba(0,212,255,0.5)]'}`} />
+        <div className="flex items-center space-x-5 relative z-10">
+            <div className={`w-14 h-14 rounded-xl flex items-center justify-center border transition-all duration-300 group-hover:scale-110 ${danger ? 'border-red-500/30 text-red-500 bg-red-500/5 group-hover:bg-red-500/10' : 'border-primary/30 text-primary bg-primary/5 group-hover:bg-primary/10'}`}>
+                <Icon size={24} />
+            </div>
             <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-slate-400">{title}</p>
-                <p className="text-3xl font-bold leading-none text-white">{loading ? '...' : value}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-slate-400 group-hover:text-white transition-colors">{title}</p>
+                {loading ? (
+                    <div className="h-8 w-16 px-2"><SkeletonLoader className="w-full h-full" /></div>
+                ) : (
+                    <p className="text-3xl font-bold leading-none text-white">{value}</p>
+                )}
             </div>
         </div>
-    </button>
+
+        {/* Decorative background element */}
+        <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full blur-2xl opacity-10 transition-all group-hover:opacity-20 ${danger ? 'bg-red-500' : 'bg-primary'}`} />
+    </motion.button>
 );
 
 const App = () => {
@@ -480,7 +580,8 @@ const App = () => {
     }, []);
 
     if (loading) return (
-        <div className="min-h-screen bg-dark flex items-center justify-center font-['Rajdhani',sans-serif]">
+        <div className="min-h-screen bg-dark flex flex-col items-center justify-center font-['Rajdhani',sans-serif] space-y-4">
+            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
             <div className="text-primary animate-pulse text-xl font-bold tracking-widest uppercase italic">Initializing System...</div>
         </div>
     );
