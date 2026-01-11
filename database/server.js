@@ -9,10 +9,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Health check
+// ================================
+// HEALTH CHECK
+// ================================
 app.get("/", (req, res) => {
   res.send(
-    "Bus Fleet Management System API is running. Access the frontend via the React dev server."
+    "Bus Fleet Management System API is running. Backend connected via Aiven MySQL."
   );
 });
 
@@ -49,16 +51,14 @@ if (process.env.AIVEN_DB_HOST) {
     }
   });
 } else {
-  console.warn(
-    "⚠️ AIVEN_DB_HOST not set. Database features will not work."
-  );
+  console.warn("⚠️ AIVEN_DB_HOST not set. Database will not be available.");
 }
 
 // Helper
 const getDb = () => {
   if (!promisePool) {
     throw new Error(
-      "Database not configured. Please set AIVEN_DB_* environment variables."
+      "Database not configured. Missing AIVEN_DB_* environment variables."
     );
   }
   return promisePool;
@@ -69,6 +69,7 @@ const getDb = () => {
 // ================================
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
+
   if (!username || !password) {
     return res
       .status(400)
@@ -90,15 +91,16 @@ app.post("/api/login", async (req, res) => {
     const user = users[0];
     const match = await bcrypt.compare(password, user.password);
 
+    // Legacy plaintext fallback
     if (!match && password === user.password) {
       return res.json({ success: true });
     }
 
-    if (match) {
-      res.json({ success: true });
-    } else {
-      res.status(401).json({ error: "Invalid credentials" });
+    if (!match) {
+      return res.status(401).json({ error: "Invalid credentials" });
     }
+
+    res.json({ success: true });
   } catch (err) {
     console.error("Login Error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -119,12 +121,12 @@ app.post("/api/signup", async (req, res) => {
   }
 
   try {
-    const [existingUsers] = await getDb().query(
+    const [existing] = await getDb().query(
       "SELECT * FROM Users WHERE username = ?",
       [username]
     );
 
-    if (existingUsers.length > 0) {
+    if (existing.length > 0) {
       return res.status(400).json({ error: "Username already exists" });
     }
 
@@ -147,8 +149,8 @@ app.post("/api/signup", async (req, res) => {
 // ================================
 app.get("/api/students", async (req, res) => {
   try {
-    const [results] = await getDb().query("SELECT * FROM Students");
-    res.json(results);
+    const [rows] = await getDb().query("SELECT * FROM Students");
+    res.json(rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Database error" });
@@ -156,28 +158,28 @@ app.get("/api/students", async (req, res) => {
 });
 
 app.get("/api/routes", async (req, res) => {
-  const [results] = await getDb().query("SELECT * FROM Routes");
-  res.json(results);
+  const [rows] = await getDb().query("SELECT * FROM Routes");
+  res.json(rows);
 });
 
 app.get("/api/buses", async (req, res) => {
-  const [results] = await getDb().query("SELECT * FROM Buses");
-  res.json(results);
+  const [rows] = await getDb().query("SELECT * FROM Buses");
+  res.json(rows);
 });
 
 app.get("/api/drivers", async (req, res) => {
-  const [results] = await getDb().query("SELECT * FROM Drivers");
-  res.json(results);
+  const [rows] = await getDb().query("SELECT * FROM Drivers");
+  res.json(rows);
 });
 
 app.get("/api/maintenance", async (req, res) => {
-  const [results] = await getDb().query("SELECT * FROM MaintenanceLogs");
-  res.json(results);
+  const [rows] = await getDb().query("SELECT * FROM MaintenanceLogs");
+  res.json(rows);
 });
 
 app.get("/api/incidents", async (req, res) => {
-  const [results] = await getDb().query("SELECT * FROM Incidents");
-  res.json(results);
+  const [rows] = await getDb().query("SELECT * FROM Incidents");
+  res.json(rows);
 });
 
 // ================================
@@ -185,55 +187,67 @@ app.get("/api/incidents", async (req, res) => {
 // ================================
 app.post("/api/addstudents", async (req, res) => {
   const { Name, Grade, BusRouteID, BoardingPoint } = req.body;
+
   await getDb().query(
     "INSERT INTO Students(Name, Grade, BusRouteId, BoardingPoint) VALUES (?, ?, ?, ?)",
     [Name, Grade, BusRouteID, BoardingPoint]
   );
+
   res.json({ success: true });
 });
 
 app.post("/api/addroutes", async (req, res) => {
   const { StartPoint, EndPoint } = req.body;
+
   await getDb().query(
     "INSERT INTO Routes(StartPoint, EndPoint, RouteName) VALUES (?, ?, ?)",
     [StartPoint, EndPoint, `Route ${StartPoint} to ${EndPoint}`]
   );
+
   res.json({ success: true });
 });
 
 app.post("/api/addbuses", async (req, res) => {
   const { BusNumber, Capacity, RouteID } = req.body;
+
   await getDb().query(
     "INSERT INTO Buses(BusNumber, Capacity, RouteID) VALUES (?, ?, ?)",
     [BusNumber, Capacity, RouteID || null]
   );
+
   res.json({ success: true });
 });
 
 app.post("/api/adddrivers", async (req, res) => {
   const { Name, LicenseNumber, Phone } = req.body;
+
   await getDb().query(
     "INSERT INTO Drivers(Name, LicenseNumber, Phone) VALUES (?, ?, ?)",
     [Name, LicenseNumber, Phone]
   );
+
   res.json({ success: true });
 });
 
 app.post("/api/addmaintenance", async (req, res) => {
   const { BusID, Description, Date } = req.body;
+
   await getDb().query(
     "INSERT INTO MaintenanceLogs(BusID, Description, Date) VALUES (?, ?, ?)",
     [BusID, Description, Date]
   );
+
   res.json({ success: true });
 });
 
 app.post("/api/addincidents", async (req, res) => {
   const { BusID, Description, Date } = req.body;
+
   await getDb().query(
     "INSERT INTO Incidents(BusID, Description, Date) VALUES (?, ?, ?)",
     [BusID, Description, Date]
   );
+
   res.json({ success: true });
 });
 
