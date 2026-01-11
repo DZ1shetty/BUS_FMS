@@ -78,7 +78,7 @@ app.post("/api/login", async (req, res) => {
 
   try {
     const [users] = await getDb().query(
-      "SELECT * FROM Users WHERE username = ?",
+      "SELECT * FROM users WHERE username = ?",
       [username]
     );
 
@@ -122,7 +122,7 @@ app.post("/api/signup", async (req, res) => {
 
   try {
     const [existing] = await getDb().query(
-      "SELECT * FROM Users WHERE username = ?",
+      "SELECT * FROM users WHERE username = ?",
       [username]
     );
 
@@ -133,7 +133,7 @@ app.post("/api/signup", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await getDb().query(
-      "INSERT INTO Users (username, password) VALUES (?, ?)",
+      "INSERT INTO users (username, password) VALUES (?, ?)",
       [username, hashedPassword]
     );
 
@@ -149,7 +149,7 @@ app.post("/api/signup", async (req, res) => {
 // ================================
 app.get("/api/students", async (req, res) => {
   try {
-    const [rows] = await getDb().query("SELECT * FROM Students");
+    const [rows] = await getDb().query("SELECT * FROM students");
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -158,27 +158,27 @@ app.get("/api/students", async (req, res) => {
 });
 
 app.get("/api/routes", async (req, res) => {
-  const [rows] = await getDb().query("SELECT * FROM Routes");
+  const [rows] = await getDb().query("SELECT * FROM routes");
   res.json(rows);
 });
 
 app.get("/api/buses", async (req, res) => {
-  const [rows] = await getDb().query("SELECT * FROM Buses");
+  const [rows] = await getDb().query("SELECT * FROM buses");
   res.json(rows);
 });
 
 app.get("/api/drivers", async (req, res) => {
-  const [rows] = await getDb().query("SELECT * FROM Drivers");
+  const [rows] = await getDb().query("SELECT * FROM drivers");
   res.json(rows);
 });
 
 app.get("/api/maintenance", async (req, res) => {
-  const [rows] = await getDb().query("SELECT * FROM MaintenanceLogs");
+  const [rows] = await getDb().query("SELECT * FROM maintenancelogs");
   res.json(rows);
 });
 
 app.get("/api/incidents", async (req, res) => {
-  const [rows] = await getDb().query("SELECT * FROM Incidents");
+  const [rows] = await getDb().query("SELECT * FROM incidents");
   res.json(rows);
 });
 
@@ -189,7 +189,7 @@ app.post("/api/addstudents", async (req, res) => {
   const { Name, Grade, BusRouteID, BoardingPoint } = req.body;
 
   await getDb().query(
-    "INSERT INTO Students(Name, Grade, BusRouteId, BoardingPoint) VALUES (?, ?, ?, ?)",
+    "INSERT INTO students (Name, Grade, BusRouteId, BoardingPoint) VALUES (?, ?, ?, ?)",
     [Name, Grade, BusRouteID, BoardingPoint]
   );
 
@@ -200,7 +200,7 @@ app.post("/api/addroutes", async (req, res) => {
   const { StartPoint, EndPoint } = req.body;
 
   await getDb().query(
-    "INSERT INTO Routes(StartPoint, EndPoint, RouteName) VALUES (?, ?, ?)",
+    "INSERT INTO routes (StartPoint, EndPoint, RouteName) VALUES (?, ?, ?)",
     [StartPoint, EndPoint, `Route ${StartPoint} to ${EndPoint}`]
   );
 
@@ -211,7 +211,7 @@ app.post("/api/addbuses", async (req, res) => {
   const { BusNumber, Capacity, RouteID } = req.body;
 
   await getDb().query(
-    "INSERT INTO Buses(BusNumber, Capacity, RouteID) VALUES (?, ?, ?)",
+    "INSERT INTO buses (BusNumber, Capacity, RouteID) VALUES (?, ?, ?)",
     [BusNumber, Capacity, RouteID || null]
   );
 
@@ -222,7 +222,7 @@ app.post("/api/adddrivers", async (req, res) => {
   const { Name, LicenseNumber, Phone } = req.body;
 
   await getDb().query(
-    "INSERT INTO Drivers(Name, LicenseNumber, Phone) VALUES (?, ?, ?)",
+    "INSERT INTO drivers (Name, LicenseNumber, Phone) VALUES (?, ?, ?)",
     [Name, LicenseNumber, Phone]
   );
 
@@ -233,7 +233,7 @@ app.post("/api/addmaintenance", async (req, res) => {
   const { BusID, Description, Date } = req.body;
 
   await getDb().query(
-    "INSERT INTO MaintenanceLogs(BusID, Description, Date) VALUES (?, ?, ?)",
+    "INSERT INTO maintenancelogs (BusID, Description, Date) VALUES (?, ?, ?)",
     [BusID, Description, Date]
   );
 
@@ -244,7 +244,7 @@ app.post("/api/addincidents", async (req, res) => {
   const { BusID, Description, Date } = req.body;
 
   await getDb().query(
-    "INSERT INTO Incidents(BusID, Description, Date) VALUES (?, ?, ?)",
+    "INSERT INTO incidents (BusID, Description, Date) VALUES (?, ?, ?)",
     [BusID, Description, Date]
   );
 
@@ -256,16 +256,16 @@ app.post("/api/addincidents", async (req, res) => {
 // ================================
 app.get("/api/dashboard-stats", async (req, res) => {
   const [[students]] = await getDb().query(
-    "SELECT COUNT(*) as count FROM Students"
+    "SELECT COUNT(*) as count FROM students"
   );
   const [[buses]] = await getDb().query(
-    "SELECT COUNT(*) as count FROM Buses"
+    "SELECT COUNT(*) as count FROM buses"
   );
   const [[routes]] = await getDb().query(
-    "SELECT COUNT(*) as count FROM Routes"
+    "SELECT COUNT(*) as count FROM routes"
   );
   const [[incidents]] = await getDb().query(
-    "SELECT COUNT(*) as count FROM Incidents"
+    "SELECT COUNT(*) as count FROM incidents"
   );
 
   res.json({
