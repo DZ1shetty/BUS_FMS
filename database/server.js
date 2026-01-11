@@ -1,4 +1,4 @@
-// server.js
+// database/server.js
 require("dotenv").config();
 const express = require("express");
 const mysql = require("mysql2");
@@ -25,7 +25,7 @@ const pool = mysql.createPool({
   host: process.env.AIVEN_DB_HOST,
   user: process.env.AIVEN_DB_USER,
   password: process.env.AIVEN_DB_PASSWORD,
-  database: process.env.AIVEN_DB_NAME || "bus_fms",
+  database: process.env.AIVEN_DB_NAME, // MUST be bus_fms
   port: Number(process.env.AIVEN_DB_PORT),
   ssl: { rejectUnauthorized: true },
   waitForConnections: true,
@@ -34,41 +34,61 @@ const pool = mysql.createPool({
 
 const db = pool.promise();
 
+// Test DB connection on startup
+(async () => {
+  try {
+    const [rows] = await db.query("SELECT DATABASE() AS db");
+    console.log("✅ Connected database:", rows[0].db);
+  } catch (err) {
+    console.error("❌ Database connection failed:", err.message);
+  }
+})();
+
 // ================================
 // AUTH
 // ================================
 app.post("/api/login", async (req, res) => {
-  const { username, password } = req.body;
+  try {
+    const { username, password } = req.body;
 
-  const [rows] = await db.query(
-    "SELECT * FROM users WHERE username = ?",
-    [username]
-  );
+    const [rows] = await db.query(
+      "SELECT * FROM users WHERE username = ?",
+      [username]
+    );
 
-  if (rows.length === 0) {
-    return res.status(401).json({ error: "Invalid credentials" });
+    if (rows.length === 0) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const user = rows[0];
+    const match = await bcrypt.compare(password, user.password);
+
+    if (!match && password !== user.password) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Server error" });
   }
-
-  const user = rows[0];
-  const match = await bcrypt.compare(password, user.password);
-
-  if (!match && password !== user.password) {
-    return res.status(401).json({ error: "Invalid credentials" });
-  }
-
-  res.json({ success: true });
 });
 
 app.post("/api/signup", async (req, res) => {
-  const { username, password } = req.body;
-  const hash = await bcrypt.hash(password, 10);
+  try {
+    const { username, password } = req.body;
+    const hash = await bcrypt.hash(password, 10);
 
-  await db.query(
-    "INSERT INTO users (username, password) VALUES (?, ?)",
-    [username, hash]
-  );
+    await db.query(
+      "INSERT INTO users (username, password) VALUES (?, ?)",
+      [username, hash]
+    );
 
-  res.json({ success: true });
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Signup error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // ================================
@@ -78,8 +98,8 @@ app.get("/api/students", async (req, res) => {
   try {
     const [rows] = await db.query("SELECT * FROM students");
     res.json(rows);
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error("Students error:", err);
     res.status(500).json({ error: "Database error" });
   }
 });
@@ -110,21 +130,7 @@ app.get("/api/incidents", async (req, res) => {
 });
 
 // ================================
-// CREATE APIs
-// ================================
-app.post("/api/addstudents", async (req, res) => {
-  const { name, grade, busrouteid, boardingpoint } = req.body;
-
-  await db.query(
-    "INSERT INTO students (name, grade, busrouteid, boardingpoint) VALUES (?, ?, ?, ?)",
-    [name, grade, busrouteid, boardingpoint]
-  );
-
-  res.json({ success: true });
-});
-
-// ================================
-// SHOW DASHBOARD COUNTS
+// DASHBOARD
 // ================================
 app.get("/api/dashboard-stats", async (req, res) => {
   const [[students]] = await db.query(
@@ -149,7 +155,7 @@ app.get("/api/dashboard-stats", async (req, res) => {
 });
 
 // ================================
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () =>
   console.log(`🚀 Server running on port ${PORT}`)
 );
