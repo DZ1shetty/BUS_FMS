@@ -19,50 +19,20 @@ app.get("/", (req, res) => {
 });
 
 // ================================
-// DATABASE CONNECTION (AIVEN ONLY)
+// DATABASE CONNECTION (AIVEN)
 // ================================
-let pool;
-let promisePool;
+const pool = mysql.createPool({
+  host: process.env.AIVEN_DB_HOST,
+  user: process.env.AIVEN_DB_USER,
+  password: process.env.AIVEN_DB_PASSWORD,
+  database: process.env.AIVEN_DB_NAME,
+  port: Number(process.env.AIVEN_DB_PORT),
+  ssl: { rejectUnauthorized: true },
+  waitForConnections: true,
+  connectionLimit: 10,
+});
 
-if (process.env.AIVEN_DB_HOST) {
-  pool = mysql.createPool({
-    host: process.env.AIVEN_DB_HOST,
-    user: process.env.AIVEN_DB_USER,
-    password: process.env.AIVEN_DB_PASSWORD,
-    database: process.env.AIVEN_DB_NAME,
-    port: Number(process.env.AIVEN_DB_PORT),
-    ssl:
-      process.env.AIVEN_DB_SSL === "true"
-        ? { rejectUnauthorized: true }
-        : undefined,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-  });
-
-  promisePool = pool.promise();
-
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error("❌ Aiven DB connection failed:", err);
-    } else {
-      console.log("✅ Connected to Aiven MySQL");
-      connection.release();
-    }
-  });
-} else {
-  console.warn("⚠️ AIVEN_DB_HOST not set. Database will not be available.");
-}
-
-// Helper
-const getDb = () => {
-  if (!promisePool) {
-    throw new Error(
-      "Database not configured. Missing AIVEN_DB_* environment variables."
-    );
-  }
-  return promisePool;
-};
+const db = pool.promise();
 
 // ================================
 // AUTH
@@ -70,78 +40,35 @@ const getDb = () => {
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
 
-  if (!username || !password) {
-    return res
-      .status(400)
-      .json({ error: "Username and password are required" });
+  const [rows] = await db.query(
+    "SELECT * FROM users WHERE username = ?",
+    [username]
+  );
+
+  if (rows.length === 0) {
+    return res.status(401).json({ error: "Invalid credentials" });
   }
 
-  try {
-    const [users] = await getDb().query(
-      "SELECT * FROM users WHERE username = ?",
-      [username]
-    );
+  const user = rows[0];
+  const match = await bcrypt.compare(password, user.password);
 
-    if (users.length === 0) {
-      return res
-        .status(401)
-        .json({ error: "User does not exist, please signup!" });
-    }
-
-    const user = users[0];
-    const match = await bcrypt.compare(password, user.password);
-
-    // Legacy plaintext fallback
-    if (!match && password === user.password) {
-      return res.json({ success: true });
-    }
-
-    if (!match) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error("Login Error:", err);
-    res.status(500).json({ error: "Internal server error" });
+  if (!match && password !== user.password) {
+    return res.status(401).json({ error: "Invalid credentials" });
   }
+
+  res.json({ success: true });
 });
 
 app.post("/api/signup", async (req, res) => {
-  const { username, password, confirmPassword } = req.body;
+  const { username, password } = req.body;
+  const hash = await bcrypt.hash(password, 10);
 
-  if (!username || !password || !confirmPassword) {
-    return res
-      .status(400)
-      .json({ error: "Username and password are required" });
-  }
+  await db.query(
+    "INSERT INTO users (username, password) VALUES (?, ?)",
+    [username, hash]
+  );
 
-  if (password !== confirmPassword) {
-    return res.status(400).json({ error: "Passwords do not match" });
-  }
-
-  try {
-    const [existing] = await getDb().query(
-      "SELECT * FROM users WHERE username = ?",
-      [username]
-    );
-
-    if (existing.length > 0) {
-      return res.status(400).json({ error: "Username already exists" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    await getDb().query(
-      "INSERT INTO users (username, password) VALUES (?, ?)",
-      [username, hashedPassword]
-    );
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error("Signup Error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
+  res.json({ success: true });
 });
 
 // ================================
@@ -149,36 +76,36 @@ app.post("/api/signup", async (req, res) => {
 // ================================
 app.get("/api/students", async (req, res) => {
   try {
-    const [rows] = await getDb().query("SELECT * FROM students");
+    const [rows] = await db.query("SELECT * FROM students");
     res.json(rows);
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ error: "Database error" });
   }
 });
 
 app.get("/api/routes", async (req, res) => {
-  const [rows] = await getDb().query("SELECT * FROM routes");
+  const [rows] = await db.query("SELECT * FROM routes");
   res.json(rows);
 });
 
 app.get("/api/buses", async (req, res) => {
-  const [rows] = await getDb().query("SELECT * FROM buses");
+  const [rows] = await db.query("SELECT * FROM buses");
   res.json(rows);
 });
 
 app.get("/api/drivers", async (req, res) => {
-  const [rows] = await getDb().query("SELECT * FROM drivers");
+  const [rows] = await db.query("SELECT * FROM drivers");
   res.json(rows);
 });
 
 app.get("/api/maintenance", async (req, res) => {
-  const [rows] = await getDb().query("SELECT * FROM maintenancelogs");
+  const [rows] = await db.query("SELECT * FROM maintenancelogs");
   res.json(rows);
 });
 
 app.get("/api/incidents", async (req, res) => {
-  const [rows] = await getDb().query("SELECT * FROM incidents");
+  const [rows] = await db.query("SELECT * FROM incidents");
   res.json(rows);
 });
 
@@ -186,86 +113,31 @@ app.get("/api/incidents", async (req, res) => {
 // CREATE APIs
 // ================================
 app.post("/api/addstudents", async (req, res) => {
-  const { Name, Grade, BusRouteID, BoardingPoint } = req.body;
+  const { name, grade, busrouteid, boardingpoint } = req.body;
 
-  await getDb().query(
-    "INSERT INTO students (Name, Grade, BusRouteId, BoardingPoint) VALUES (?, ?, ?, ?)",
-    [Name, Grade, BusRouteID, BoardingPoint]
-  );
-
-  res.json({ success: true });
-});
-
-app.post("/api/addroutes", async (req, res) => {
-  const { StartPoint, EndPoint } = req.body;
-
-  await getDb().query(
-    "INSERT INTO routes (StartPoint, EndPoint, RouteName) VALUES (?, ?, ?)",
-    [StartPoint, EndPoint, `Route ${StartPoint} to ${EndPoint}`]
-  );
-
-  res.json({ success: true });
-});
-
-app.post("/api/addbuses", async (req, res) => {
-  const { BusNumber, Capacity, RouteID } = req.body;
-
-  await getDb().query(
-    "INSERT INTO buses (BusNumber, Capacity, RouteID) VALUES (?, ?, ?)",
-    [BusNumber, Capacity, RouteID || null]
-  );
-
-  res.json({ success: true });
-});
-
-app.post("/api/adddrivers", async (req, res) => {
-  const { Name, LicenseNumber, Phone } = req.body;
-
-  await getDb().query(
-    "INSERT INTO drivers (Name, LicenseNumber, Phone) VALUES (?, ?, ?)",
-    [Name, LicenseNumber, Phone]
-  );
-
-  res.json({ success: true });
-});
-
-app.post("/api/addmaintenance", async (req, res) => {
-  const { BusID, Description, Date } = req.body;
-
-  await getDb().query(
-    "INSERT INTO maintenancelogs (BusID, Description, Date) VALUES (?, ?, ?)",
-    [BusID, Description, Date]
-  );
-
-  res.json({ success: true });
-});
-
-app.post("/api/addincidents", async (req, res) => {
-  const { BusID, Description, Date } = req.body;
-
-  await getDb().query(
-    "INSERT INTO incidents (BusID, Description, Date) VALUES (?, ?, ?)",
-    [BusID, Description, Date]
+  await db.query(
+    "INSERT INTO students (name, grade, busrouteid, boardingpoint) VALUES (?, ?, ?, ?)",
+    [name, grade, busrouteid, boardingpoint]
   );
 
   res.json({ success: true });
 });
 
 // ================================
-// DASHBOARD
+// SHOW DASHBOARD COUNTS
 // ================================
 app.get("/api/dashboard-stats", async (req, res) => {
-  const [[students]] = await getDb().query(
-    "SELECT COUNT(*) as count FROM students"
+  const [[students]] = await db.query(
+    "SELECT COUNT(*) AS count FROM students"
   );
-  const [[buses]] = await getDb().query(
-    "SELECT COUNT(*) as count FROM buses"
+  const [[buses]] = await db.query(
+    "SELECT COUNT(*) AS count FROM buses"
   );
-  const [[routes]] = await getDb().query(
-    "SELECT COUNT(*) as count FROM routes"
+  const [[routes]] = await db.query(
+    "SELECT COUNT(*) AS count FROM routes"
   );
-  const [[incidents]] = await getDb().query(
-    "SELECT COUNT(*) as count FROM incidents"
+  const [[incidents]] = await db.query(
+    "SELECT COUNT(*) AS count FROM incidents"
   );
 
   res.json({
@@ -277,26 +149,7 @@ app.get("/api/dashboard-stats", async (req, res) => {
 });
 
 // ================================
-// FIREBASE CONFIG
-// ================================
-app.get("/api/config/firebase", (req, res) => {
-  res.json({
-    apiKey: process.env.FIREBASE_API_KEY,
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.FIREBASE_APP_ID,
-    measurementId: process.env.FIREBASE_MEASUREMENT_ID,
-  });
-});
-
-// ================================
 const PORT = process.env.PORT || 5000;
-if (require.main === module) {
-  app.listen(PORT, () =>
-    console.log(`🚀 Server running at http://localhost:${PORT}`)
-  );
-}
-
-module.exports = app;
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on port ${PORT}`)
+);
