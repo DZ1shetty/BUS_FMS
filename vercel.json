@@ -1,15 +1,16 @@
 {
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "database/server.js",
-      "use": "@vercel/node"
+      "source": "/api/(.*)",
+      "destination": "/database/server.js"
     }
   ],
-  "routes": [
+  "redirects": [
     {
-      "src": "/(.*)",
-      "dest": "/database/server.js"
+      "source": "/",
+      "destination": "/login/login.html",
+      "permanent": false
     }
   ]
 }
