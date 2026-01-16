@@ -11,6 +11,10 @@ try {
       const text = await response.text();
       try {
         firebaseConfig = JSON.parse(text);
+        console.log('Firebase Config Loaded:', firebaseConfig); // Debugging
+        if (!firebaseConfig.apiKey) {
+          console.error('CRITICAL: Firebase apiKey is missing in the response from the server.');
+        }
       } catch (e) {
         console.error('Expected JSON, got HTML/Text:', text.substring(0, 100) + '...');
         console.warn('This usually means the server backend crashed or returned an error page.');
