@@ -22,6 +22,16 @@ window.handleGoogleSignIn = async function() {
       provider: 'google'
     }));
 
+    // Get and store the ID token for API calls
+    const token = await user.getIdToken();
+    localStorage.setItem('token', token);
+
+    // Also keep a simple username in localStorage as a friendly fallback for non-Firebase pages
+    try {
+      if (user.displayName) localStorage.setItem('username', user.displayName);
+      else if (user.email) localStorage.setItem('username', user.email);
+    } catch (e) { console.warn('Could not set local username', e); } 
+
     // Show success toast
     showToast('Login successful! Redirecting...', 'success');
     

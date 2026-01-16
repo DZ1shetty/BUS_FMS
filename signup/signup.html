@@ -1,41 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bus Fleet Management System</title>
-    <link rel="stylesheet" href="../styles/styles.css" />
-    <link rel="stylesheet" href="../styles/toast_loader.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-    />
-  </head>
-  <body class="login-page-body">
-    <div class="loader-overlay">
-        <div class="loader"></div>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up - Bus Fleet Management</title>
+  <link rel="stylesheet" href="../styles/styles.css" />
+  <link rel="stylesheet" href="../styles/toast_loader.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+</head>
+
+<body class="auth-body">
+  <div class="loader-overlay">
+    <div class="loader"></div>
+  </div>
+  <div class="toast-container"></div>
+
+  <div class="auth-container">
+    <div class="auth-header">
+      <div class="auth-logo">B</div>
+      <div class="auth-title">Create Account</div>
     </div>
-    <div class="toast-container"></div>
 
-    <div class="login-container" id="login">
-      <div class="login-header">
-        <div class="logo">B</div>
-        <div class="project-name"><h6>BUS FLEET MANAGEMENT SYSTEM</h6></div>
-      </div>
+    <!-- Signup Form -->
+    <input type="text" id="username" class="auth-input" placeholder="Choose Username" />
+    <input type="password" id="password" class="auth-input" placeholder="Password" />
+    <input type="password" id="confirm-password" class="auth-input" placeholder="Confirm Password" />
 
-      <input type="text" id="username" placeholder="Username" />
-      <input type="password" id="password" placeholder="Password" />
-      <input
-        type="password"
-        id="confirm-password"
-        placeholder="Confirm your password"
-      />
-      <button onclick="signup()">Sign up</button>
-      <p>
-        Already have an account? <a href="#" onclick="gotoLogin()">Log in</a>
+    <button onclick="signup()" class="auth-btn">
+      Sign Up
+    </button>
+
+    <div style="margin-top: 24px;">
+      <p style="color: var(--text-secondary); font-size: 14px;">
+        Already have an account? <a href="../login/login.html" class="auth-link">Log In</a>
       </p>
     </div>
+  </div>
 
-    <script src="signup.js"></script>
-  </body>
+  <script src="signup.js"></script>
+  <script src="../homepage/interactive-bg.js"></script>
+</body>
+
 </html>

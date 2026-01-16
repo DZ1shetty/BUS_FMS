@@ -25,7 +25,28 @@ async function login() {
     const data = await response.json();
 
     if (response.ok && data.success) {
-      localStorage.setItem('username', username);
+      // Store authentication in multiple places for maximum browser compatibility
+      try {
+        // Primary storage
+        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('auth_username', username);
+        localStorage.setItem('auth_provider', 'traditional');
+
+        // Session backup
+        sessionStorage.setItem('auth_token', data.token);
+        sessionStorage.setItem('auth_username', username);
+
+        // Legacy keys for backward compatibility
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('username', username);
+
+        console.log('✅ Login successful, credentials stored in localStorage and sessionStorage');
+      } catch (storageError) {
+        console.error('❌ Storage error:', storageError);
+        showToast('Failed to store login data. Please enable cookies and local storage.', 'error');
+        return;
+      }
+
       showToast('Login successful! Redirecting...', 'success');
       setTimeout(() => {
         window.location.href = '../homepage/index.html';
@@ -45,10 +66,7 @@ function gotoSignup() {
   window.location.href = '../signup/signup.html';
 }
 
-// Toast and Loader functions (copied/adapted for standalone usage if needed, 
-// but ideally we should import them or have them in a shared file. 
-// For now, I'll implement them here to ensure they work without module complexity)
-
+// Toast notification function
 function showToast(message, type = 'success') {
   const container = document.querySelector('.toast-container');
   if (!container) return;
@@ -88,10 +106,12 @@ function showLoading(show) {
 
 // Add event listener for Enter key
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('password').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            login();
-        }
+  const passwordField = document.getElementById('password');
+  if (passwordField) {
+    passwordField.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        login();
+      }
     });
+  }
 });
-

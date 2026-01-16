@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visual Analytics - Bus Fleet Management</title>
+    <link rel="stylesheet" href="../styles/styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="js/analyticsPage.js"></script>
+  </head>
+  <body class="bg-slate-50">
+    <div class="app-container">
+      <!-- Sidebar Navigation (Reusable) -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="logo-icon">B</div>
+          <h3>BusFleet</h3>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="index.html" class="nav-item">
+            <i class="fas fa-columns"></i> <span>Dashboard</span>
+          </a>
+          <button class="nav-item active">
+            <i class="fas fa-chart-pie"></i> <span>Analytics</span>
+          </button>
+        </nav>
+        <div class="sidebar-footer">
+          <a href="index.html" class="logout-btn flex items-center justify-center gap-2">
+            <i class="fas fa-arrow-left"></i> <span>Back</span>
+          </a>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <header class="top-header">
+          <div class="header-left">
+             <h2 id="page-title">Visual Insights & Analytics</h2>
+          </div>
+          <div class="header-right">
+             <div id="user-profile">
+               <div class="user-info">
+                 <span id="logged-in-as">Admin</span>
+                 <span class="user-role">Fleet Manager</span>
+               </div>
+               <div class="profile-icon">
+                 <i class="fas fa-user"></i>
+               </div>
+             </div>
+          </div>
+        </header>
+
+        <div class="content-wrapper">
+          <!-- Stats Overview -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="stat-card">
+              <div class="stat-icon bg-blue-50 text-blue-500">
+                <i class="fas fa-users"></i>
+              </div>
+              <div class="stat-info">
+                <p id="total-students">0</p>
+                <span>Total Students</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon bg-orange-50 text-orange-500">
+                <i class="fas fa-bus"></i>
+              </div>
+              <div class="stat-info">
+                <p id="total-buses">0</p>
+                <span>Active Fleet</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon bg-green-50 text-green-500">
+                <i class="fas fa-route"></i>
+              </div>
+              <div class="stat-info">
+                <p id="total-routes">0</p>
+                <span>Mapped Routes</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon bg-red-50 text-red-500">
+                <i class="fas fa-exclamation-triangle"></i>
+              </div>
+              <div class="stat-info">
+                <p id="total-incidents">0</p>
+                <span>Recent Incidents</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Visualization Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Incidents Over Time -->
+            <div class="chart-card bg-white p-8 rounded-2xl border border-gray-100 shadow-sm col-span-1 lg:col-span-2">
+              <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
+                  <i class="fas fa-chart-line text-orange-500"></i> Fleet Incident Trends
+                </h3>
+              </div>
+              <div class="h-96">
+                <canvas id="incidentsChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Distribution Chart -->
+            <div class="chart-card bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+              <h3 class="text-lg font-bold text-gray-800 uppercase tracking-widest mb-6 flex items-center gap-3">
+                <i class="fas fa-chart-pie text-blue-500"></i> Capacity Distribution
+              </h3>
+              <div class="h-80">
+                <canvas id="distributionChart"></canvas>
+              </div>
+            </div>
+
+            <!-- New Chart: Maintenance Status (Placeholder concept) -->
+            <div class="chart-card bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+              <h3 class="text-lg font-bold text-gray-800 uppercase tracking-widest mb-6 flex items-center gap-3">
+                <i class="fas fa-tools text-green-500"></i> Maintenance Health
+              </h3>
+              <div class="h-80">
+                <canvas id="maintenanceChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
