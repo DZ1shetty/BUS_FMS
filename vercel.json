@@ -1,15 +1,9 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "database/server.js",
-      "use": "@vercel/node"
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/database/server.js"
+      "destination": "/api"
     }
   ],
   "redirects": [
