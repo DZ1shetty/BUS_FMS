@@ -8,9 +8,15 @@ try {
   if (typeof window !== 'undefined') {
     const response = await fetch('/api/config/firebase');
     if (response.ok) {
-      firebaseConfig = await response.json();
+      const text = await response.text();
+      try {
+        firebaseConfig = JSON.parse(text);
+      } catch (e) {
+        console.error('Expected JSON, got HTML/Text:', text.substring(0, 100) + '...');
+        console.warn('This usually means the server backend crashed or returned an error page.');
+      }
     } else {
-      console.error('Failed to fetch Firebase config');
+      console.error('Failed to fetch Firebase config. Status:', response.status);
     }
   }
 } catch (error) {
