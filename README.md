@@ -1,108 +1,120 @@
-# Bus Fleet Management System (BUS_FMS)
+# Bus Fleet Management System (BusFleet)
 
-A comprehensive web-based application for managing bus fleets, routes, students, drivers, maintenance logs, and incidents. This system is designed to streamline operations for schools or transport companies.
+![BusFleet Banner](frontend/public/logo.jpg)
 
-## Features
+A modern, comprehensive web application for managing bus fleets, educational institute logistics, student tracking, and maintenance logs. Built with a focus on performance, security, and a premium user experience.
 
-- **Dashboard:** Real-time overview of students, buses, routes, and incidents.
-- **Student Management:** Add, view, and delete student records.
-- **Route Management:** Manage bus routes with start/end points and distances.
-- **Bus Fleet:** Track bus capacity and assignments.
-- **Driver Roster:** Manage driver details and licenses.
-- **Maintenance Logs:** Record and track vehicle maintenance.
-- **Incident Reports:** Log and monitor incidents.
-- **Authentication:** Secure login and signup functionality.
-- **Responsive Design:** Works on desktop and mobile devices.
-- **Dark Mode:** Toggle between light and dark themes.
+## ✨ Features
 
-## Tech Stack
+-   **📊 Interactive Dashboard:** Real-time analytics with visual charts and stats for quick insights.
+-   **🔐 Secure Authentication:** Robust Login/Signup flow powered by **Firebase Auth** (Email/Password & Google Sign-In).
+-   **🎓 Student Management:** Efficiently manage student data, boarding points, and bus assignments.
+-   **🚌 Fleet & Route Operations:** Track active buses, manage routes with distances, and optimize logistics.
+-   **🛠️ Maintenance & Incidents:** Log vehicle health issues and track incident reports.
+-   **🌙 Premium Dark Mode:** Fully responsive UI with a carefully crafted, high-contrast dark theme.
+-   **⚡ Modern UI/UX:** Built with **React** and **Tailwind CSS** for a smooth, responsive, and beautiful experience.
 
-- **Frontend:** HTML5, CSS3, JavaScript (Vanilla)
-- **Backend:** Node.js, Express.js
-- **Database:** MySQL
-- **Authentication:** Firebase (for analytics/config), Custom JWT/Session (implemented in backend)
-- **Charts:** Chart.js
+## 🛠️ Tech Stack
 
-## Prerequisites
+### Frontend
+-   **Framework:** [React](https://reactjs.org/) (via [Vite](https://vitejs.dev/))
+-   **Styling:** [Tailwind CSS](https://tailwindcss.com/) + [Framer Motion](https://www.framer.com/motion/) (Animations)
+-   **Icons:** [Lucide React](https://lucide.dev/)
+-   **HTTP Client:** Axios
 
-Before you begin, ensure you have the following installed:
-- [Node.js](https://nodejs.org/) (v14 or higher)
-- [MySQL](https://www.mysql.com/) (Server and Workbench recommended)
-- [Git](https://git-scm.com/)
+### Backend & Database
+-   **Server:** Node.js + Express.js
+-   **Database:** [Turso](https://turso.tech/) (LibSQL) - Edge-hosted database
+-   **API Security:** CORS & Environment Variable protection
 
-## Installation & Setup
+### Infrastructure
+-   **Auth:** Firebase Authentication
+-   **Hosting (Frontend):** Vercel (Recommended)
+-   **Hosting (Backend):** Vercel Serverless / Render / Railway
+
+## 🚀 Getting Started
+
+### Prerequisites
+-   [Node.js](https://nodejs.org/) (v16+)
+-   [Git](https://git-scm.com/)
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/DZ1shetty/Bus_Fleet_Management_System.git
-cd Bus_Fleet_Management_System/BUS_FMS
+git clone https://github.com/DZ1shetty/BUS_FMS.git
+cd BUS_FMS
 ```
 
-### 2. Install Dependencies
-```bash
-npm install
-```
+### 2. Environment Setup
+Create a `.env` file in the **root** directory (same level as `package.json`).
+**Note:** You also need a `.env` inside `frontend/` depending on your build setup, but for this monorepo structure, ensure the root has the backend config and frontend build picks up its own.
 
-### 3. Database Setup
-1. Open your MySQL client (e.g., MySQL Workbench).
-2. Create a new database named `bus_fms` (or whatever you prefer).
-3. Run the schema script located in `database/schema.sql` to create the tables.
-4. (Optional) Run `database/dummy_data.sql` to seed the database with test data.
-
-### 4. Environment Configuration
-Create a `.env` file in the `BUS_FMS` directory (root of the project) and add your configuration. **Do not share this file.**
-
+**Root `.env` (Backend & Shared):**
 ```env
-# Database Configuration
-DB_HOST=localhost
-DB_USER=your_mysql_username
-DB_PASSWORD=your_mysql_password
-DB_NAME=bus_fms
+# Database (Turso)
+TURSO_DATABASE_URL=your_turso_db_url
+TURSO_AUTH_TOKEN=your_turso_auth_token
 
-# Server Port
+# Server
 PORT=5000
-
-# Firebase Configuration (Get these from your Firebase Console)
-FIREBASE_API_KEY=your_api_key
-FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_STORAGE_BUCKET=your_project_id.firebasestorage.app
-FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-FIREBASE_APP_ID=your_app_id
-FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
 
-### 5. Start the Server
+**Frontend `.env` (`frontend/.env`):**
+```env
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
+
+### 3. Install Dependencies
+This project uses a root `package.json` to manage scripts but separate folders for backend and frontend code.
 ```bash
-npm start
+# Install root dependencies (concurrently, etc.)
+npm install
+
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
 ```
-The server will start at `http://localhost:5000`.
 
-### 6. Access the Application
-Open your browser and navigate to `http://localhost:5000`. You will be redirected to the login page.
+### 4. Run the Application
+We have a convenient "turbo" script to run both backend and frontend simultaneously.
+```bash
+# From the root directory:
+npm run dev
+```
+-   **Frontend:** `http://localhost:5173`
+-   **Backend:** `http://localhost:5000`
 
-## Vercel Deployment
+## 📂 Project Structure
 
-1. Connect your GitHub repository to Vercel.
-2. In the Vercel Dashboard, go to **Project Settings** > **Environment Variables**.
-3. Add all variables from your `.env` (DB credentials and Firebase config).
-4. Vercel will automatically build the frontend and deploy the serverless functions.
+```
+BUS_FMS/
+├── database/           # Backend Server & Database Logic
+│   ├── server.js       # Main Express API entry point
+│   └── ...
+├── frontend/           # React Application
+│   ├── src/
+│   │   ├── components/ # Reusable UI Components
+│   │   ├── App.jsx     # Main Component & Routing
+│   │   └── ...
+│   └── tailwind.config.js
+├── package.json        # Root scripts
+└── README.md
+```
 
-## Project Structure
+## 🤝 Contributing
 
-- `api/`: Entry point for Vercel serverless functions.
-- `database/`: Backend logic and SQL schema.
-- `frontend/`: React application (Source of truth for the UI).
-- `vercel.json`: Deployment configuration.
+1.  Fork the project.
+2.  Create your feature branch: `git checkout -b feature/AmazingFeature`
+3.  Commit your changes: `git commit -m 'Add some AmazingFeature'`
+4.  Push to the branch: `git push origin feature/AmazingFeature`
+5.  Open a Pull Request.
 
-## Contributing
-
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature/YourFeature`).
-3. Commit your changes (`git commit -m 'Add some feature'`).
-4. Push to the branch (`git push origin feature/YourFeature`).
-5. Open a Pull Request.
-
-## License
+## 📄 License
 
 This project is licensed under the ISC License.
