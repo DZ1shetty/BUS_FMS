@@ -129,6 +129,10 @@ const appData = {
         drivers: { endpoint: 'drivers', idKey: 'DriverID', columns: [{ key: 'DriverID', label: 'ID' }, { key: 'Name', label: 'NAME' }, { key: 'LicenseNumber', label: 'LICENSE' }, { key: 'Phone', label: 'PHONE' }] },
         maintenance: { endpoint: 'maintenance', idKey: 'LogID', columns: [{ key: 'LogID', label: 'ID' }, { key: 'BusID', label: 'BUS ID' }, { key: 'Date', label: 'DATE' }, { key: 'Description', label: 'DESCRIPTION' }] },
         incidents: { endpoint: 'incidents', idKey: 'IncidentID', columns: [{ key: 'IncidentID', label: 'ID' }, { key: 'BusID', label: 'BUS ID' }, { key: 'Date', label: 'DATE' }, { key: 'Description', label: 'DESCRIPTION' }] }
+    },
+    pagination: {
+        currentPage: 1,
+        itemsPerPage: 8
     }
 };
 
@@ -143,11 +147,24 @@ const tableController = {
             return;
         }
 
-        let html = '<table class="data-table"><thead><tr>';
+        // Pagination Logic
+        const page = appData.pagination.currentPage;
+        const perPage = appData.pagination.itemsPerPage;
+        const totalItems = data.length;
+        const totalPages = Math.ceil(totalItems / perPage);
+
+        // Ensure current page is valid
+        if (page > totalPages && totalPages > 0) appData.pagination.currentPage = totalPages;
+        if (appData.pagination.currentPage < 1) appData.pagination.currentPage = 1;
+
+        const start = (appData.pagination.currentPage - 1) * perPage;
+        const paginatedData = data.slice(start, start + perPage);
+
+        let html = '<div class="table-responsive"><table class="data-table"><thead><tr>';
         config.columns.forEach(col => { html += `<th onclick="sortTable('${col.key}')">${col.label} <i class="fas fa-sort"></i></th>`; });
         html += '<th>Actions</th></tr></thead><tbody>';
 
-        data.forEach(row => {
+        paginatedData.forEach(row => {
             html += '<tr>';
             config.columns.forEach(col => {
                 let value = row[col.key];
@@ -157,9 +174,65 @@ const tableController = {
             const itemId = row[config.idKey];
             html += `<td><button onclick="deleteItem('${sectionKey}', ${itemId})" class="btn-delete"><i class="fas fa-trash"></i></button></td></tr>`;
         });
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
+
+        // Pagination Controls
+        if (totalPages > 1) {
+            html += `
+            <div class="pagination-controls flex justify-between items-center mt-4 p-4 border-t border-gray-100">
+                <span class="text-sm text-gray-500">Showing ${start + 1} to ${Math.min(start + perPage, totalItems)} of ${totalItems} entries</span>
+                <div class="flex gap-2">
+                    <button class="px-3 py-1 rounded-md border border-gray-200 hover:bg-gray-50 ${appData.pagination.currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" 
+                            onclick="changePage(-1)" ${appData.pagination.currentPage === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    ${generatePageNumbers(totalPages, appData.pagination.currentPage)}
+                    <button class="px-3 py-1 rounded-md border border-gray-200 hover:bg-gray-50 ${appData.pagination.currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" 
+                            onclick="changePage(1)" ${appData.pagination.currentPage === totalPages ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>`;
+        }
+
         content.innerHTML = html;
     }
+};
+
+function generatePageNumbers(totalPages, current) {
+    let html = '';
+    // Simple pagination: show all if <= 7, else show simplified
+    if (totalPages <= 7) {
+        for (let i = 1; i <= totalPages; i++) {
+            html += `<button onclick="setPage(${i})" class="px-3 py-1 rounded-md border ${i === current ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 hover:bg-gray-50'}">${i}</button>`;
+        }
+    } else {
+        html += `<button onclick="setPage(1)" class="px-3 py-1 rounded-md border ${1 === current ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 hover:bg-gray-50'}">1</button>`;
+        if (current > 3) html += `<span class="px-2">...</span>`;
+        // Show neighbors
+        for (let i = Math.max(2, current - 1); i <= Math.min(totalPages - 1, current + 1); i++) {
+            html += `<button onclick="setPage(${i})" class="px-3 py-1 rounded-md border ${i === current ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 hover:bg-gray-50'}">${i}</button>`;
+        }
+        if (current < totalPages - 2) html += `<span class="px-2">...</span>`;
+        html += `<button onclick="setPage(${totalPages})" class="px-3 py-1 rounded-md border ${totalPages === current ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 hover:bg-gray-50'}">${totalPages}</button>`;
+    }
+    return html;
+}
+
+window.changePage = function (delta) {
+    appData.pagination.currentPage += delta;
+    // content refresh handled by calling render with current filtered data... 
+    // BUT render needs data. We need to store 'filteredData' somewhere or re-search?
+    // Let's modify searchData to store result in appData.filteredData or similar.
+    // For now, let's assume appData.currentFilteredData exists or fall back to currentData
+    const dataToRender = appData.currentFilteredData || appData.currentData;
+    tableController.render(dataToRender, appData.currentSection);
+};
+
+window.setPage = function (page) {
+    appData.pagination.currentPage = page;
+    const dataToRender = appData.currentFilteredData || appData.currentData;
+    tableController.render(dataToRender, appData.currentSection);
 };
 
 // ============================================
@@ -200,6 +273,8 @@ window.showSection = async function (section) {
         const config = appData.sections[section];
         const data = await apiClient.fetch(config.endpoint);
         appData.currentData = data;
+        appData.currentFilteredData = data; // Initialize filtered data
+        appData.pagination.currentPage = 1; // Reset to page 1
         tableController.render(data, section);
         loadDashboardStats(); // Refresh stats on section change too
     } catch (err) { uiUtils.showToast("Failed to load data: " + err.message, "error"); } finally { uiUtils.hideLoading(); }
@@ -346,7 +421,78 @@ document.addEventListener("DOMContentLoaded", () => {
             window.saveData(appData.currentSection);
         });
     }
+
+    document.getElementById("user-profile")?.addEventListener("click", window.openProfile);
 });
+
+window.openProfile = function () {
+    const modal = document.getElementById('profile-modal');
+    modal.style.display = 'flex';
+    // Pre-fill
+    const username = localStorage.getItem('auth_username') || '';
+    // We don't have email in local storage effectively unless stored on login.
+    // Assuming login stores email now (it does in updated server.js, but client login.js needs to save it).
+    // If not, we might show empty or fetch it? 
+    // Let's assume we need to fetch profile or use stored.
+    // Since we don't have a 'getProfile' endpoint, we rely on stored info.
+    // I'll update login.js later to store email. For now, fetch from localStorage 'auth_email'.
+    const email = localStorage.getItem('auth_email') || '';
+
+    document.querySelector('#profile-form [name="username"]').value = username;
+    document.querySelector('#profile-form [name="email"]').value = email;
+};
+
+window.closeProfile = function () {
+    document.getElementById('profile-modal').style.display = 'none';
+};
+
+window.saveProfile = async function () {
+    const form = document.getElementById('profile-form');
+    const username = form.username.value;
+    const email = form.email.value;
+    const currentPassword = form.currentPassword.value;
+    const newPassword = form.newPassword.value;
+    const confirmNewPassword = form.confirmNewPassword.value;
+
+    uiUtils.showLoading();
+    try {
+        // 1. Update Info
+        // 1. Update Info
+        const updateInfoRes = await fetch('/api/users/profile', {
+            method: 'PUT',
+            headers: apiClient.getHeaders(),
+            body: JSON.stringify({ username, email })
+        });
+        const infoData = await apiClient.handleResponse(updateInfoRes);
+
+        // Update local storage
+        localStorage.setItem('auth_username', username);
+        localStorage.setItem('auth_email', email);
+        setupUserInfo(); // Refresh UI
+
+
+        // 2. Change Password if provided
+        if (currentPassword && newPassword) {
+            if (newPassword !== confirmNewPassword) throw new Error("New passwords do not match");
+
+            const passRes = await fetch('/api/users/change-password', {
+                method: 'PUT',
+                headers: apiClient.getHeaders(),
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            await apiClient.handleResponse(passRes);
+            uiUtils.showToast("Profile & Password updated!", "success");
+        } else {
+            uiUtils.showToast("Profile updated!", "success");
+        }
+
+        window.closeProfile();
+    } catch (err) {
+        uiUtils.showToast(err.message || "Update failed", "error");
+    } finally {
+        uiUtils.hideLoading();
+    }
+};
 
 function setupUserInfo() {
     const u = localStorage.getItem('auth_username') || sessionStorage.getItem('auth_username') || 'Admin';
@@ -364,5 +510,7 @@ window.searchData = function () {
     const filtered = appData.currentData.filter(row =>
         Object.values(row).some(val => String(val).toLowerCase().includes(term))
     );
+    appData.currentFilteredData = filtered; // Store filtered state
+    appData.pagination.currentPage = 1; // Reset to page 1
     tableController.render(filtered, appData.currentSection);
 }

@@ -30,11 +30,13 @@ async function login() {
         // Primary storage
         localStorage.setItem('auth_token', data.token);
         localStorage.setItem('auth_username', username);
+        localStorage.setItem('auth_email', data.email || ''); // Store email
         localStorage.setItem('auth_provider', 'traditional');
 
         // Session backup
         sessionStorage.setItem('auth_token', data.token);
         sessionStorage.setItem('auth_username', username);
+        sessionStorage.setItem('auth_email', data.email || '');
 
         // Legacy keys for backward compatibility
         localStorage.setItem('token', data.token);

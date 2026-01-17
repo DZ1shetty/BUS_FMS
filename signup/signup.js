@@ -2,14 +2,16 @@ const API_URL = '/api';
 
 async function signup() {
   const usernameInput = document.getElementById('username');
+  const emailInput = document.getElementById('email');
   const passwordInput = document.getElementById('password');
   const confirmPasswordInput = document.getElementById('confirm-password');
-  
+
   const username = usernameInput.value;
+  const email = emailInput ? emailInput.value : '';
   const password = passwordInput.value;
   const confirmPassword = confirmPasswordInput.value;
 
-  if (!username || !password || !confirmPassword) {
+  if (!username || !email || !password || !confirmPassword) {
     showToast('Please fill in all fields', 'error');
     return;
   }
@@ -27,7 +29,7 @@ async function signup() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, password, confirmPassword }),
+      body: JSON.stringify({ username, email, password, confirmPassword }),
     });
 
     const data = await response.json();

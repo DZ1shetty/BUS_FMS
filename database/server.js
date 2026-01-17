@@ -135,7 +135,7 @@ app.post("/api/login", async (req, res) => {
         JWT_SECRET,
         { expiresIn: '24h' }
       );
-      res.json({ success: true, token, username: user.username });
+      res.json({ success: true, token, username: user.username, email: user.email });
     } else {
       res.status(401).json({ error: "Invalid credentials" });
     }
@@ -148,8 +148,95 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+// Profile Management Endpoints
+app.put("/api/users/profile", authenticateToken, async (req, res) => {
+  const { username, email } = req.body;
+  const userId = req.user.id; // From JWT
+
+  try {
+    // Check for unique username/email conflict (excluding self)
+    const [existing] = await getDb().query("SELECT * FROM Users WHERE (username = ? OR email = ?) AND id != ?", [username, email, userId]);
+    if (existing.length > 0) {
+      return res.status(400).json({ error: "Username or Email already in use." });
+    }
+
+    await getDb().query("UPDATE Users SET username = ?, email = ? WHERE id = ?", [username, email, userId]);
+
+    res.json({ success: true, message: "Profile updated successfully." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+app.put("/api/users/change-password", authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const [users] = await getDb().query("SELECT * FROM Users WHERE id = ?", [userId]);
+    if (users.length === 0) return res.status(404).json({ error: "User not found" });
+
+    const user = users[0];
+    const match = await bcrypt.compare(currentPassword, user.password);
+
+    if (!match && currentPassword !== user.password) { // Support legacy plain
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await getDb().query("UPDATE Users SET password = ? WHERE id = ?", [hashedPassword, userId]);
+
+    res.json({ success: true, message: "Password changed successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to change password" });
+  }
+});
+
+// Forgot Password Flow
+app.post("/api/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email is required" });
+
+  try {
+    const [users] = await getDb().query("SELECT * FROM Users WHERE email = ?", [email]);
+    if (users.length === 0) {
+      // Security: Don't reveal functionality, just say sent.
+      return res.json({ success: true, message: "If that email exists, a reset link has been sent." });
+    }
+
+    const user = users[0];
+    // Generate a simple token (In production use a separate table with expiry)
+    const resetToken = jwt.sign({ id: user.id, type: 'reset' }, JWT_SECRET, { expiresIn: '15m' });
+
+    // MOCK EMAIL SENDING
+    console.log(`[MOCK EMAIL] Password Reset Link for ${email}: http://localhost:5000/login/reset-password.html?token=${resetToken}`);
+
+    res.json({ success: true, message: "Reset link sent to your email (Check server console for mock link)." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error processing request" });
+  }
+});
+
+app.post("/api/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.type !== 'reset') return res.status(400).json({ error: "Invalid token type" });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await getDb().query("UPDATE Users SET password = ? WHERE id = ?", [hashedPassword, decoded.id]);
+
+    res.json({ success: true, message: "Password has been reset. Please login." });
+  } catch (err) {
+    return res.status(400).json({ error: "Invalid or expired token" });
+  }
+});
+
 app.post("/api/signup", async (req, res) => {
-  const { username, password, confirmPassword } = req.body;
+  const { username, email, password, confirmPassword } = req.body;
 
   if (!username || !password || !confirmPassword) {
     return res.status(400).json({ error: "Username and password are required" });
@@ -171,7 +258,7 @@ app.post("/api/signup", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert new user
-    await getDb().query("INSERT INTO Users (username, password) VALUES (?, ?)", [username, hashedPassword]);
+    await getDb().query("INSERT INTO Users (username, email, password) VALUES (?, ?, ?)", [username, email, hashedPassword]);
 
     res.json({ success: true });
   } catch (err) {
