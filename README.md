@@ -1,6 +1,15 @@
 # Bus Fleet Management System (BusFleet)
 
-![BusFleet Banner](frontend/public/logo.jpg)
+
+<div align="center">
+  <img src="frontend/public/logo.jpg" alt="BusFleet Logo" width="150" style="border-radius: 50%; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);" />
+</div>
+
+<div align="center">
+  <h3>Bus Fleet Management System</h3>
+  <p>Efficient Tracking • Secure Logistics • Smart Management</p>
+</div>
+
 
 A modern, comprehensive web application for managing bus fleets, educational institute logistics, student tracking, and maintenance logs. Built with a focus on performance, security, and a premium user experience.
 
