@@ -54,7 +54,7 @@ const Login = () => {
 
             <div className="w-full max-w-md bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-xl p-8 relative z-10 animate-fade-in">
                 <div className="text-center mb-8">
-                    <img src="/logo.jpg" alt="Logo" className="w-16 h-16 rounded-full shadow-2xl shadow-primary/30 mb-4 hover:scale-105 transition-transform" />
+                    <img src="/logo.jpg" alt="Logo" className="w-24 h-24 mx-auto rounded-full shadow-2xl shadow-primary/30 mb-4 hover:scale-105 transition-transform block" />
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Welcome Back</h1>
                     <p className="text-slate-500 text-sm">Sign in to access your dashboard</p>
                 </div>

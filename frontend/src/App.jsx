@@ -44,6 +44,8 @@ import Login from './components/Login';
 import Signup from './components/Signup';
 import DeleteModal from './components/DeleteModal';
 
+import InteractiveBackground from './components/InteractiveBackground';
+
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -301,31 +303,44 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="flex h-screen bg-slate-50 dark:bg-dark text-slate-800 dark:text-slate-200 font-sans overflow-hidden selection:bg-primary/20">
+        <div className="flex h-screen bg-transparent dark:bg-transparent text-slate-800 dark:text-slate-200 font-sans overflow-hidden selection:bg-primary/20 relative">
+            <InteractiveBackground />
 
             {/* SIDEBAR */}
+            {/* SIDEBAR */}
             <motion.aside
-                initial={{ width: 0, opacity: 0, x: -50 }}
-                animate={{ width: isSidebarOpen ? 280 : 0, opacity: 1, x: 0 }}
+                initial={{ width: 80 }}
+                animate={{ width: isSidebarOpen ? 280 : 80 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="bg-white dark:bg-dark-surface border-r border-slate-200 dark:border-dark-border z-20 flex flex-col h-full overflow-hidden shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
+                className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200 dark:border-dark-border z-20 flex flex-col h-full overflow-hidden shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
             >
-                <div className="p-6 flex items-center gap-4">
-                    <img src="/logo.jpg" alt="BusFleet" className="w-12 h-12 rounded-full shadow-lg shadow-primary/20 hover:scale-105 transition-transform" />
-                    <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">BusFleet</span>
+                <div className={`flex items-center gap-4 transition-all ${isSidebarOpen ? 'p-6' : 'p-3 justify-center'}`}>
+                    <img src="/logo.jpg" alt="BusFleet" className="w-12 h-12 rounded-full shadow-lg shadow-primary/20 hover:scale-105 transition-transform object-cover shrink-0" />
+                    {isSidebarOpen && (
+                        <motion.span
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white whitespace-nowrap"
+                        >
+                            BUS-FMS
+                        </motion.span>
+                    )}
                 </div>
 
-                <div className="px-4 py-2 flex-1 overflow-y-auto">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-3">Management</p>
-                    <nav className="space-y-1.5">
+                <div className="px-4 py-2 flex-1 overflow-y-auto overflow-x-hidden">
+                    {isSidebarOpen && (
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-3 whitespace-nowrap">Management</p>
+                    )}
+                    <nav className={`${isSidebarOpen ? 'space-y-1.5' : 'space-y-6 py-4'}`}>
                         {navItems.map((item) => (
                             <button
                                 key={item.id}
                                 onClick={() => setActiveSection(item.id)}
-                                className={`sidebar-link w-full group relative overflow-hidden ${activeSection === item.id ? 'active' : ''}`}
+                                className={`sidebar-link w-full group relative overflow-hidden shrink-0 ${activeSection === item.id ? 'active' : ''} ${!isSidebarOpen && 'justify-center !px-0'}`}
                             >
-                                <item.icon size={20} className={`relative z-10 transition-colors ${activeSection === item.id ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300'}`} />
-                                <span className="relative z-10 font-medium">{item.label}</span>
+                                <item.icon size={isSidebarOpen ? 20 : 24} className={`relative z-10 transition-colors shrink-0 ${activeSection === item.id ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300'}`} />
+                                {isSidebarOpen && <span className="relative z-10 font-medium whitespace-nowrap">{item.label}</span>}
                                 {activeSection === item.id && (
                                     <motion.div
                                         layoutId="sidebar-active"
@@ -339,30 +354,43 @@ const Dashboard = () => {
                     </nav>
                 </div>
 
-                <div className="mt-auto p-4 border-t border-slate-100 dark:border-dark-border bg-slate-50/50 dark:bg-white/5">
-                    <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-white dark:hover:bg-white/5 transition-colors cursor-pointer group shadow-sm hover:shadow-md border border-transparent hover:border-slate-200 dark:hover:border-white/5">
-                        <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden ring-2 ring-white dark:ring-dark-surface">
+                <div className="mt-auto p-4 border-t border-slate-100 dark:border-dark-border bg-slate-50/50 dark:bg-white/5 overflow-hidden">
+                    <div className={`flex items-center gap-3 p-2 rounded-xl hover:bg-white dark:hover:bg-white/5 transition-colors cursor-pointer group shadow-sm hover:shadow-md border border-transparent hover:border-slate-200 dark:hover:border-white/5 ${!isSidebarOpen && 'justify-center'}`}>
+                        <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden ring-2 ring-white dark:ring-dark-surface shrink-0">
                             {user?.photoURL ? (
-                                <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
+                                <img src={user.photoURL} alt="User" className="w-full h-full object-cover shrink-0" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold bg-gradient-to-br from-slate-200 to-slate-300">
+                                <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold bg-gradient-to-br from-slate-200 to-slate-300 shrink-0">
                                     {(user?.email?.[0] || 'U').toUpperCase()}
                                 </div>
                             )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{user?.displayName || 'Administrator'}</p>
-                            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider truncate">System Admin</p>
-                        </div>
-                        <button onClick={() => signOut(auth)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                            <LogOut size={18} />
-                        </button>
+                        {isSidebarOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, width: 0 }}
+                                animate={{ opacity: 1, width: 'auto' }}
+                                exit={{ opacity: 0, width: 0 }}
+                                className="flex-1 min-w-0"
+                            >
+                                <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{user?.displayName || 'Administrator'}</p>
+                                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider truncate">{user?.email || 'System Admin'}</p>
+                            </motion.div>
+                        )}
+                        {isSidebarOpen ? (
+                            <button onClick={() => signOut(auth)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                                <LogOut size={18} />
+                            </button>
+                        ) : (
+                            // Optional: If you want logout accessible when closed, or maybe just click avatar to expand?
+                            // For now keeping simpler, user can expand to logout or we add a small logout trigger
+                            null
+                        )}
                     </div>
                 </div>
             </motion.aside>
 
             {/* MAIN CONTENT */}
-            <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-50 dark:bg-dark">
+            <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-transparent">
                 {/* Header */}
                 <header className="h-24 px-8 flex items-center justify-between bg-white/80 dark:bg-dark/80 backdrop-blur-md z-10 sticky top-0 border-b border-slate-200/50 dark:border-dark-border/50">
                     <div className="flex items-center gap-4">
@@ -402,14 +430,6 @@ const Dashboard = () => {
                                     <Download size={18} />
                                     <span>Export</span>
                                 </button>
-                                <button
-                                    onClick={() => { setFormData({}); setShowModal(true); }}
-                                    className="btn-primary py-2.5 px-5 text-sm shadow-xl shadow-primary/20 hover:shadow-primary/30"
-                                >
-                                    <Plus size={18} strokeWidth={2.5} />
-                                    <span className="font-semibold hidden sm:inline">Add New {getSingularTitle(activeSection)}</span>
-                                    <span className="sm:hidden">Add</span>
-                                </button>
                             </>
                         )}
                     </div>
@@ -443,6 +463,14 @@ const Dashboard = () => {
                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                             />
                                         </div>
+                                        <button
+                                            onClick={() => { setFormData({}); setShowModal(true); }}
+                                            className="btn-primary py-2 px-4 text-sm shadow-lg shadow-primary/20 hover:shadow-primary/30 shrink-0"
+                                        >
+                                            <Plus size={18} strokeWidth={2.5} />
+                                            <span className="font-semibold hidden sm:inline ml-2">Add New {getSingularTitle(activeSection)}</span>
+                                            <span className="sm:hidden">Add</span>
+                                        </button>
                                     </div>
 
                                     <div className="card-minimal overflow-hidden min-h-[400px]">
@@ -635,7 +663,7 @@ const Dashboard = () => {
                     </div>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 };
 
