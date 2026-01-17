@@ -10,6 +10,7 @@
     body {
         font-family: 'Inter', sans-serif;
         @apply bg-slate-50 text-slate-800 dark:bg-dark dark:text-slate-200 transition-colors duration-300;
+        background-image: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.03) 0%, transparent 60%);
         overflow-x: hidden;
     }
 }

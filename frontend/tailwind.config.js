@@ -20,11 +20,11 @@ export default {
         secondary: "#64748b", // Slate
         accent: "#f59e0b", // Amber for subtle highlights
         dark: {
-          DEFAULT: "#0f172a", // Slate 900
-          surface: "#1e293b", // Slate 800
-          lighter: "#334155", // Slate 700
-          border: "#e2e8f0", // Slate 200 (Light mode border)
-          "border-dark": "#334155",
+          DEFAULT: "#020617", // Slate 950 - Deepest background
+          surface: "#0f172a", // Slate 900 - Card background (high contrast)
+          lighter: "#1e293b", // Slate 800 - Inputs / Secondary
+          border: "#1e293b", // Slate 800 - Subtle borders
+          "border-highlight": "#334155", // Slate 700 - Active borders
         },
         surface: {
           light: "#ffffff",

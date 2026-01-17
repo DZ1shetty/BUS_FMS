@@ -20,11 +20,11 @@ import {
     PieChart,
     BarChart2,
     ChevronRight,
+    ChevronLeft,
     Sun,
     Moon,
     Download,
-    ArrowUpDown,
-    ChevronLeft
+    ArrowUpDown
 } from 'lucide-react';
 import {
     Chart as ChartJS,
@@ -102,7 +102,7 @@ const Dashboard = () => {
         if (data.length === 0) return;
         const csvContent = "data:text/csv;charset=utf-8,"
             + Object.keys(data[0]).join(",") + "\n"
-            + data.map(row => Object.values(row).join(",")).join("\n");
+            + data.map(row => Object.values(row).map(val => `"${val}"`).join(",")).join("\n");
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
@@ -171,6 +171,7 @@ const Dashboard = () => {
             case 'drivers': idField = 'DriverID'; apiEndpoint = 'deleteDriver'; break;
             case 'maintenance': idField = 'LogID'; apiEndpoint = 'deleteMaintainence'; break;
             case 'incidents': idField = 'IncidentID'; apiEndpoint = 'deleteIncident'; break;
+            default: return; // Safety
         }
 
         try {
@@ -198,7 +199,6 @@ const Dashboard = () => {
     };
 
     const navItems = [
-        { id: 'analytics', label: 'Analytics', icon: BarChart2 },
         { id: 'students', label: 'Students', icon: Users },
         { id: 'routes', label: 'Routes', icon: RouteIcon },
         { id: 'buses', label: 'Buses', icon: Bus },
@@ -213,7 +213,7 @@ const Dashboard = () => {
         )
     );
 
-    // Sorting & Pagination (Moved here to access filteredData)
+    // Sorting & Pagination (Must be after filteredData definition)
     const sortedData = React.useMemo(() => {
         let sortableItems = [...filteredData];
         if (sortConfig.key !== null) {
@@ -282,6 +282,18 @@ const Dashboard = () => {
         }
     };
 
+    const getSingularTitle = (section) => {
+        const map = {
+            'students': 'Student',
+            'routes': 'Route',
+            'buses': 'Bus',
+            'drivers': 'Driver',
+            'maintenance': 'Maintenance Log',
+            'incidents': 'Incident'
+        };
+        return map[section] || 'Entry';
+    };
+
     const contentVariants = {
         hidden: { opacity: 0, y: 15, scale: 0.99 },
         visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
@@ -298,11 +310,9 @@ const Dashboard = () => {
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className="bg-white dark:bg-dark-surface border-r border-slate-200 dark:border-dark-border z-20 flex flex-col h-full overflow-hidden shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
             >
-                <div className="p-6 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/30">
-                        B
-                    </div>
-                    <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">BusFleet</span>
+                <div className="p-6 flex items-center gap-4">
+                    <img src="/logo.jpg" alt="BusFleet" className="w-12 h-12 rounded-full shadow-lg shadow-primary/20 hover:scale-105 transition-transform" />
+                    <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">BusFleet</span>
                 </div>
 
                 <div className="px-4 py-2 flex-1 overflow-y-auto">
@@ -366,6 +376,13 @@ const Dashboard = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setActiveSection('analytics')}
+                            className={`hidden md:flex items-center gap-2 p-2.5 rounded-xl transition-colors font-medium text-sm ${activeSection === 'analytics' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10'}`}
+                        >
+                            <BarChart2 size={18} />
+                            <span>Analytics</span>
+                        </button>
                         {/* Theme Toggle */}
                         <button
                             onClick={() => setDarkMode(!darkMode)}
@@ -390,7 +407,7 @@ const Dashboard = () => {
                                     className="btn-primary py-2.5 px-5 text-sm shadow-xl shadow-primary/20 hover:shadow-primary/30"
                                 >
                                     <Plus size={18} strokeWidth={2.5} />
-                                    <span className="font-semibold hidden sm:inline">Add New</span>
+                                    <span className="font-semibold hidden sm:inline">Add New {getSingularTitle(activeSection)}</span>
                                     <span className="sm:hidden">Add</span>
                                 </button>
                             </>
@@ -507,9 +524,8 @@ const Dashboard = () => {
                                                         </button>
 
                                                         {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                                            // Logic for sliding window could be added, simplified for now
                                                             const page = i + 1;
-                                                            // better logic for many pages:
+                                                            // Logic for sliding window could be added, simplified for now
                                                             let p = page;
                                                             if (totalPages > 5 && currentPage > 3) p = currentPage - 3 + page;
                                                             if (p > totalPages) return null;
@@ -577,7 +593,7 @@ const Dashboard = () => {
                             className="bg-white dark:bg-dark-surface w-full max-w-lg rounded-2xl shadow-2xl relative z-10 overflow-hidden"
                         >
                             <div className="px-8 py-6 border-b border-slate-100 dark:border-dark-border flex justify-between items-center bg-slate-50/50 dark:bg-white/5">
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add New {activeSection.slice(0, -1)}</h3>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add New {getSingularTitle(activeSection)}</h3>
                                 <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
                                     <X size={20} />
                                 </button>

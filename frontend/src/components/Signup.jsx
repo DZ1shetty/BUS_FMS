@@ -24,7 +24,13 @@ const Signup = () => {
             await createUserWithEmailAndPassword(auth, email, password);
             navigate('/');
         } catch (err) {
-            setError(err.message);
+            console.error("Signup Error:", err);
+            let msg = "Failed to create account.";
+            if (err.code === 'auth/operation-not-allowed') msg = "Email/Password sign-in is not enabled. Please enable it in the Firebase Console.";
+            else if (err.code === 'auth/email-already-in-use') msg = "This email is already in use.";
+            else if (err.code === 'auth/weak-password') msg = "Password should be at least 6 characters.";
+            else if (err.code) msg = err.code.replace('auth/', '').replace(/-/g, ' ');
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -36,7 +42,12 @@ const Signup = () => {
             await signInWithPopup(auth, provider);
             navigate('/');
         } catch (err) {
-            setError(err.message);
+            console.error("Google Sign In Error:", err);
+            let msg = "Failed to sign in with Google.";
+            if (err.code === 'auth/operation-not-allowed') msg = "Google sign-in is not enabled. Please enable it in the Firebase Console.";
+            else if (err.code === 'auth/popup-closed-by-user') msg = "Sign-in popup was closed.";
+            else if (err.code) msg = err.code.replace('auth/', '').replace(/-/g, ' ');
+            setError(msg);
         }
     };
 
@@ -46,9 +57,7 @@ const Signup = () => {
 
             <div className="w-full max-w-md bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-xl p-8 relative z-10 animate-fade-in">
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-primary rounded-xl text-white font-bold text-2xl shadow-lg shadow-primary/20 mb-4">
-                        B
-                    </div>
+                    <img src="/logo.jpg" alt="Logo" className="w-16 h-16 rounded-full shadow-2xl shadow-primary/30 mb-4 hover:scale-105 transition-transform" />
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Create Account</h1>
                     <p className="text-slate-500 text-sm">Join BusFleet to get started</p>
                 </div>
