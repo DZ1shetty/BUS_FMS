@@ -1,48 +1,39 @@
 // database/server.js
 require("dotenv").config();
 const express = require("express");
-const mysql = require("mysql2");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
+
+const { createClient } = require("@libsql/client");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // ================================
+// TURSO CONNECTION
+// ================================
+const db = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+
+// Test DB connection once
+(async () => {
+  try {
+    const result = await db.execute("SELECT 1 as ok");
+    console.log("✅ Turso DB connected successfully:", result.rows);
+  } catch (err) {
+    console.error("❌ Turso DB connection failed:", err.message);
+  }
+})();
+
+// ================================
 // HEALTH CHECK
 // ================================
 app.get("/", (req, res) => {
-  res.send(
-    "Bus Fleet Management System API is running. Backend connected via Aiven MySQL."
-  );
+  res.send("Bus Fleet Management System API is running. Backend connected via Turso.");
 });
-
-// ================================
-// DATABASE CONNECTION (AIVEN)
-// ================================
-const pool = mysql.createPool({
-  host: process.env.AIVEN_DB_HOST,
-  user: process.env.AIVEN_DB_USER,
-  password: process.env.AIVEN_DB_PASSWORD,
-  database: process.env.AIVEN_DB_NAME, // MUST be bus_fms
-  port: Number(process.env.AIVEN_DB_PORT),
-  ssl: { rejectUnauthorized: true },
-  waitForConnections: true,
-  connectionLimit: 10,
-});
-
-const db = pool.promise();
-
-// Test DB connection on startup
-(async () => {
-  try {
-    const [rows] = await db.query("SELECT DATABASE() AS db");
-    console.log("✅ Connected database:", rows[0].db);
-  } catch (err) {
-    console.error("❌ Database connection failed:", err.message);
-  }
-})();
 
 // ================================
 // AUTH
@@ -51,19 +42,22 @@ app.post("/api/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const [rows] = await db.query(
-      "SELECT * FROM users WHERE username = ?",
-      [username]
-    );
+    const users = await db.execute({
+      sql: "SELECT * FROM Users WHERE username = ?",
+      args: [username],
+    });
 
-    if (rows.length === 0) {
+    if (users.rows.length === 0) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const user = rows[0];
-    const match = await bcrypt.compare(password, user.password);
+    const user = users.rows[0];
 
-    if (!match && password !== user.password) {
+    const storedPassword = user.password;
+    const match = await bcrypt.compare(password, storedPassword);
+
+    // fallback if plain text exists in old data
+    if (!match && password !== storedPassword) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -79,10 +73,10 @@ app.post("/api/signup", async (req, res) => {
     const { username, password } = req.body;
     const hash = await bcrypt.hash(password, 10);
 
-    await db.query(
-      "INSERT INTO users (username, password) VALUES (?, ?)",
-      [username, hash]
-    );
+    await db.execute({
+      sql: "INSERT INTO Users (username, password) VALUES (?, ?)",
+      args: [username, hash],
+    });
 
     res.json({ success: true });
   } catch (err) {
@@ -96,8 +90,8 @@ app.post("/api/signup", async (req, res) => {
 // ================================
 app.get("/api/students", async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM students");
-    res.json(rows);
+    const result = await db.execute("SELECT * FROM Students");
+    res.json(result.rows);
   } catch (err) {
     console.error("Students error:", err);
     res.status(500).json({ error: "Database error" });
@@ -105,57 +99,54 @@ app.get("/api/students", async (req, res) => {
 });
 
 app.get("/api/routes", async (req, res) => {
-  const [rows] = await db.query("SELECT * FROM routes");
-  res.json(rows);
+  const result = await db.execute("SELECT * FROM Routes");
+  res.json(result.rows);
 });
 
 app.get("/api/buses", async (req, res) => {
-  const [rows] = await db.query("SELECT * FROM buses");
-  res.json(rows);
+  const result = await db.execute("SELECT * FROM Buses");
+  res.json(result.rows);
 });
 
 app.get("/api/drivers", async (req, res) => {
-  const [rows] = await db.query("SELECT * FROM drivers");
-  res.json(rows);
+  const result = await db.execute("SELECT * FROM Drivers");
+  res.json(result.rows);
 });
 
 app.get("/api/maintenance", async (req, res) => {
-  const [rows] = await db.query("SELECT * FROM maintenancelogs");
-  res.json(rows);
+  const result = await db.execute("SELECT * FROM MaintenanceLogs");
+  res.json(result.rows);
 });
 
 app.get("/api/incidents", async (req, res) => {
-  const [rows] = await db.query("SELECT * FROM incidents");
-  res.json(rows);
+  const result = await db.execute("SELECT * FROM Incidents");
+  res.json(result.rows);
 });
 
 // ================================
 // DASHBOARD
 // ================================
 app.get("/api/dashboard-stats", async (req, res) => {
-  const [[students]] = await db.query(
-    "SELECT COUNT(*) AS count FROM students"
-  );
-  const [[buses]] = await db.query(
-    "SELECT COUNT(*) AS count FROM buses"
-  );
-  const [[routes]] = await db.query(
-    "SELECT COUNT(*) AS count FROM routes"
-  );
-  const [[incidents]] = await db.query(
-    "SELECT COUNT(*) AS count FROM incidents"
-  );
+  const students = await db.execute("SELECT COUNT(*) AS count FROM Students");
+  const buses = await db.execute("SELECT COUNT(*) AS count FROM Buses");
+  const routes = await db.execute("SELECT COUNT(*) AS count FROM Routes");
+  const incidents = await db.execute("SELECT COUNT(*) AS count FROM Incidents");
 
   res.json({
-    students: students.count,
-    buses: buses.count,
-    routes: routes.count,
-    incidents: incidents.count,
+    students: students.rows[0].count,
+    buses: buses.rows[0].count,
+    routes: routes.rows[0].count,
+    incidents: incidents.rows[0].count,
   });
 });
 
-// ================================
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () =>
-  console.log(`🚀 Server running on port ${PORT}`)
-);
+// ✅ IMPORTANT: Export app (NO app.listen here for Vercel)
+module.exports = app;
+
+// Start server locally if run directly
+if (require.main === module) {
+  const PORT = process.env.PORT || 8080;
+  app.listen(PORT, () => {
+    console.log(`Backend server running locally on port ${PORT}`);
+  });
+}

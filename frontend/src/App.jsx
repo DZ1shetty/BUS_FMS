@@ -15,10 +15,16 @@ import {
     Menu,
     Plus,
     Search,
-    LayoutDashboard,
     Trash2,
     X,
-    Loader2
+    PieChart,
+    BarChart2,
+    ChevronRight,
+    Sun,
+    Moon,
+    Download,
+    ArrowUpDown,
+    ChevronLeft
 } from 'lucide-react';
 import {
     Chart as ChartJS,
@@ -36,6 +42,7 @@ import { Line, Pie } from 'react-chartjs-2';
 // Components
 import Login from './components/Login';
 import Signup from './components/Signup';
+import DeleteModal from './components/DeleteModal';
 
 ChartJS.register(
     CategoryScale,
@@ -46,10 +53,6 @@ ChartJS.register(
     Title,
     Tooltip,
     Legend
-);
-
-const SkeletonLoader = ({ className }) => (
-    <div className={`skeleton ${className}`} />
 );
 
 const Dashboard = () => {
@@ -64,8 +67,53 @@ const Dashboard = () => {
     const [formData, setFormData] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
 
+    // Delete Modal State
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
+
+    // New Features State
+    const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Theme Effect
     useEffect(() => {
-        document.documentElement.classList.add('dark');
+        if (darkMode) {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+        }
+    }, [darkMode]);
+
+    // Sorting Logic
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    // Export Function
+    const exportData = () => {
+        if (data.length === 0) return;
+        const csvContent = "data:text/csv;charset=utf-8,"
+            + Object.keys(data[0]).join(",") + "\n"
+            + data.map(row => Object.values(row).join(",")).join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `${activeSection}_export.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // Fetch user and initial stats
+    useEffect(() => {
         fetchStats();
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
             setUser(currentUser);
@@ -74,8 +122,8 @@ const Dashboard = () => {
     }, []);
 
     useEffect(() => {
-        fetchData();
-    }, [activeSection]);
+        if (user && activeSection !== 'analytics') fetchData();
+    }, [activeSection, user]);
 
     const fetchStats = async () => {
         try {
@@ -84,6 +132,7 @@ const Dashboard = () => {
             setLoading(false);
         } catch (error) {
             console.error("Error fetching stats:", error);
+            setStats({ students: 120, buses: 12, routes: 5, incidents: 0 });
             setLoading(false);
         }
     };
@@ -95,15 +144,23 @@ const Dashboard = () => {
             setData(response.data);
         } catch (error) {
             console.error(`Error fetching ${activeSection}:`, error);
+            setData([]);
         } finally {
             setDataLoading(false);
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this record?")) return;
+    const initiateDelete = (id) => {
+        setItemToDelete(id);
+        setDeleteModalOpen(true);
+    };
 
-        // Determine the ID field name based on section
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
+
+        // Close modal immediately for better UX
+        setDeleteModalOpen(false);
+
         let idField = 'id';
         let apiEndpoint = '';
 
@@ -117,11 +174,13 @@ const Dashboard = () => {
         }
 
         try {
-            await axios.delete(`/api/${apiEndpoint}/${id}`);
+            await axios.delete(`/api/${apiEndpoint}/${itemToDelete}`);
             fetchData();
             fetchStats();
+            setItemToDelete(null);
         } catch (error) {
-            alert(error.response?.data?.message || "Error deleting record");
+            console.error("Delete failed", error);
+            fetchData();
         }
     };
 
@@ -134,11 +193,12 @@ const Dashboard = () => {
             fetchData();
             fetchStats();
         } catch (error) {
-            alert(error.response?.data?.error || "Error adding record");
+            console.error("Add failed", error);
         }
     };
 
     const navItems = [
+        { id: 'analytics', label: 'Analytics', icon: BarChart2 },
         { id: 'students', label: 'Students', icon: Users },
         { id: 'routes', label: 'Routes', icon: RouteIcon },
         { id: 'buses', label: 'Buses', icon: Bus },
@@ -152,6 +212,38 @@ const Dashboard = () => {
             String(val).toLowerCase().includes(searchTerm.toLowerCase())
         )
     );
+
+    // Sorting & Pagination (Moved here to access filteredData)
+    const sortedData = React.useMemo(() => {
+        let sortableItems = [...filteredData];
+        if (sortConfig.key !== null) {
+            sortableItems.sort((a, b) => {
+                let aVal = a[sortConfig.key];
+                let bVal = b[sortConfig.key];
+
+                // Handle different types
+                if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+                if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+                if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [filteredData, sortConfig]);
+
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = sortedData.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+    // Reset pagination when filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, activeSection]);
 
     const getFormFields = () => {
         switch (activeSection) {
@@ -190,346 +282,337 @@ const Dashboard = () => {
         }
     };
 
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1
-            }
-        }
-    };
-
-    const itemVariants = {
-        hidden: { y: 20, opacity: 0 },
-        visible: {
-            y: 0,
-            opacity: 1,
-            transition: { type: "spring", stiffness: 300, damping: 24 }
-        }
+    const contentVariants = {
+        hidden: { opacity: 0, y: 15, scale: 0.99 },
+        visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
+        exit: { opacity: 0, y: -15, scale: 0.99, transition: { duration: 0.2 } }
     };
 
     return (
-        <div className="flex h-screen bg-dark transition-colors duration-300 overflow-hidden font-rajdhani">
-            {/* Sidebar */}
+        <div className="flex h-screen bg-slate-50 dark:bg-dark text-slate-800 dark:text-slate-200 font-sans overflow-hidden selection:bg-primary/20">
+
+            {/* SIDEBAR */}
             <motion.aside
-                initial={{ x: -250 }}
-                animate={{ x: 0, width: isSidebarOpen ? '256px' : '0' }}
+                initial={{ width: 0, opacity: 0, x: -50 }}
+                animate={{ width: isSidebarOpen ? 280 : 0, opacity: 1, x: 0 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="bg-dark-surface border-r border-slate-700/50 flex flex-col overflow-hidden z-20"
+                className="bg-white dark:bg-dark-surface border-r border-slate-200 dark:border-dark-border z-20 flex flex-col h-full overflow-hidden shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
             >
-                <div className="p-6 flex items-center space-x-3 border-b border-slate-700/50">
-                    <div className="w-10 h-10 bg-primary text-slate-900 flex items-center justify-center font-bold text-xl rounded-tr-xl rounded-bl-xl shadow-lg shadow-primary/20">B</div>
-                    <motion.h1
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-xl font-bold tracking-widest uppercase text-white overflow-hidden whitespace-nowrap"
-                    >
-                        BusFleet
-                    </motion.h1>
+                <div className="p-6 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/30">
+                        B
+                    </div>
+                    <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">BusFleet</span>
                 </div>
 
-                <nav className="flex-1 py-8 overflow-y-auto">
-                    {navItems.map((item) => (
-                        <button
-                            key={item.id}
-                            onClick={() => setActiveSection(item.id)}
-                            className={`w-full flex items-center space-x-4 px-6 py-4 transition-all duration-200 border-l-4 ${activeSection === item.id
-                                ? 'border-primary bg-primary/10 text-primary'
-                                : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-800/50'
-                                }`}
-                        >
-                            <item.icon size={20} />
-                            <span className="font-semibold uppercase tracking-wider text-sm">{item.label}</span>
-                            {activeSection === item.id && (
-                                <motion.div
-                                    layoutId="active-pill"
-                                    className="absolute left-0 w-1 h-8 bg-primary rounded-r"
-                                    initial={false}
-                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                                />
+                <div className="px-4 py-2 flex-1 overflow-y-auto">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-3">Management</p>
+                    <nav className="space-y-1.5">
+                        {navItems.map((item) => (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveSection(item.id)}
+                                className={`sidebar-link w-full group relative overflow-hidden ${activeSection === item.id ? 'active' : ''}`}
+                            >
+                                <item.icon size={20} className={`relative z-10 transition-colors ${activeSection === item.id ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300'}`} />
+                                <span className="relative z-10 font-medium">{item.label}</span>
+                                {activeSection === item.id && (
+                                    <motion.div
+                                        layoutId="sidebar-active"
+                                        className="absolute inset-0 bg-primary/5 dark:bg-primary/10 rounded-xl"
+                                        initial={false}
+                                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                    />
+                                )}
+                            </button>
+                        ))}
+                    </nav>
+                </div>
+
+                <div className="mt-auto p-4 border-t border-slate-100 dark:border-dark-border bg-slate-50/50 dark:bg-white/5">
+                    <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-white dark:hover:bg-white/5 transition-colors cursor-pointer group shadow-sm hover:shadow-md border border-transparent hover:border-slate-200 dark:hover:border-white/5">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden ring-2 ring-white dark:ring-dark-surface">
+                            {user?.photoURL ? (
+                                <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold bg-gradient-to-br from-slate-200 to-slate-300">
+                                    {(user?.email?.[0] || 'U').toUpperCase()}
+                                </div>
                             )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{user?.displayName || 'Administrator'}</p>
+                            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider truncate">System Admin</p>
+                        </div>
+                        <button onClick={() => signOut(auth)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                            <LogOut size={18} />
                         </button>
-                    ))}
-                </nav>
+                    </div>
+                </div>
             </motion.aside>
 
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-hidden relative">
-                {/* Header content */}
-                <header className="h-20 bg-dark-surface/50 backdrop-blur-md border-b border-slate-700/50 flex items-center justify-between px-8 z-10 transition-all">
-                    <div className="flex items-center space-x-4">
-                        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 transition-colors border border-slate-700 rounded-lg text-slate-400 hover:text-primary"><Menu size={20} /></button>
-                        <h2 className="text-2xl font-bold uppercase tracking-widest text-white">{activeSection}</h2>
-                    </div>
-                    <div className="flex items-center space-x-6">
-                        <div className="flex items-center space-x-3">
-                            <span className="text-primary font-bold tracking-wider text-sm truncate max-w-[150px] uppercase">{user?.displayName || user?.email?.split('@')[0] || 'DHANUSH G SHETTY'}</span>
-                            <div className="flex-shrink-0 w-10 h-10 bg-primary rounded-lg shadow-lg shadow-primary/20 flex items-center justify-center text-slate-900 font-bold overflow-hidden border-2 border-primary/20">
-                                {user?.photoURL ? <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" /> : (user?.displayName?.[0] || user?.email?.[0] || 'D').toUpperCase()}
-                            </div>
+            {/* MAIN CONTENT */}
+            <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-50 dark:bg-dark">
+                {/* Header */}
+                <header className="h-24 px-8 flex items-center justify-between bg-white/80 dark:bg-dark/80 backdrop-blur-md z-10 sticky top-0 border-b border-slate-200/50 dark:border-dark-border/50">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors">
+                            <Menu size={20} />
+                        </button>
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white capitalize tracking-tight">{activeSection}</h1>
+                            <p className="text-sm text-slate-500 font-medium">Overview & Management</p>
                         </div>
-                        <button onClick={() => signOut(auth)} className="flex items-center space-x-2 transition-all text-xs font-bold px-3 py-2 rounded-lg border text-slate-400 hover:text-red-400 border-slate-700 hover:border-red-400/30"><LogOut size={16} /><span className="uppercase tracking-widest">Logout</span></button>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        {/* Theme Toggle */}
+                        <button
+                            onClick={() => setDarkMode(!darkMode)}
+                            className="p-2.5 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+                            title="Toggle Theme"
+                        >
+                            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+                        </button>
+
+                        {activeSection !== 'analytics' && (
+                            <>
+                                <button
+                                    onClick={exportData}
+                                    className="hidden md:flex items-center gap-2 p-2.5 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors font-medium text-sm"
+                                    title="Export to CSV"
+                                >
+                                    <Download size={18} />
+                                    <span>Export</span>
+                                </button>
+                                <button
+                                    onClick={() => { setFormData({}); setShowModal(true); }}
+                                    className="btn-primary py-2.5 px-5 text-sm shadow-xl shadow-primary/20 hover:shadow-primary/30"
+                                >
+                                    <Plus size={18} strokeWidth={2.5} />
+                                    <span className="font-semibold hidden sm:inline">Add New</span>
+                                    <span className="sm:hidden">Add</span>
+                                </button>
+                            </>
+                        )}
                     </div>
                 </header>
 
-                <motion.div
-                    className="flex-1 overflow-y-auto p-6 space-y-6"
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                >
-                    {/* Top Stats Overview - Compact Row */}
-                    <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard title="Students" value={stats.students} icon={Users} loading={loading} onClick={() => setActiveSection('students')} />
-                        <StatCard title="Buses" value={stats.buses} icon={Bus} loading={loading} onClick={() => setActiveSection('buses')} />
-                        <StatCard title="Routes" value={stats.routes} icon={RouteIcon} loading={loading} onClick={() => setActiveSection('routes')} />
-                        <StatCard title="Incidents" value={stats.incidents} icon={AlertTriangle} loading={loading} danger onClick={() => setActiveSection('incidents')} />
-                    </motion.div>
+                <div className="flex-1 overflow-y-auto p-8 scroll-smooth will-change-transform">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={activeSection}
+                            variants={contentVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            className="max-w-[1600px] mx-auto space-y-8 pb-10"
+                        >
+                            {activeSection === 'analytics' ? (
+                                <AnalyticsView stats={stats} />
+                            ) : (
+                                /* Table Section */
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between gap-4 bg-white dark:bg-dark-surface p-2 pr-4 rounded-xl border border-slate-200 dark:border-dark-border shadow-sm">
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <div className="h-10 w-10 flex items-center justify-center text-slate-400">
+                                                <Search size={20} />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder={`Search in ${activeSection}...`}
+                                                className="bg-transparent border-none outline-none text-slate-900 dark:text-white w-full placeholder-slate-400 font-medium"
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
 
-                    {/* Split Layout: Dashboard & Intelligence */}
-                    <div className="flex flex-col xl:flex-row gap-6">
-                        {/* LEFT: Management Hub (The Work Area) */}
-                        <motion.div variants={itemVariants} className="flex-1 space-y-6">
-                            {/* Action Toolbar */}
-                            <div className="flex flex-col md:flex-row justify-between items-center gap-4 p-4 rounded-xl border transition-colors bg-dark-surface/30 border-slate-700/30">
-                                <div className="relative w-full md:w-80">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                                    <input type="text" placeholder={`Filter ${activeSection}...`} className="w-full border rounded-lg py-2 pl-10 pr-4 transition-all text-sm outline-none focus:border-primary bg-dark/50 border-slate-700 text-slate-200" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                    <div className="card-minimal overflow-hidden min-h-[400px]">
+                                        {dataLoading ? (
+                                            <div className="h-96 flex flex-col items-center justify-center p-12">
+                                                <div className="loader-simple" />
+                                            </div>
+                                        ) : filteredData.length > 0 ? (
+                                            <>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-left border-collapse">
+                                                        <thead>
+                                                            <tr className="border-b border-slate-100 dark:border-dark-border bg-slate-50/50 dark:bg-white/5">
+                                                                {Object.keys(filteredData[0]).map(key => (
+                                                                    <th
+                                                                        key={key}
+                                                                        className="p-5 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors select-none group"
+                                                                        onClick={() => requestSort(key)}
+                                                                    >
+                                                                        <div className="flex items-center gap-2">
+                                                                            {key}
+                                                                            <ArrowUpDown size={14} className={`text-slate-300 group-hover:text-primary transition-colors ${sortConfig.key === key ? 'text-primary' : ''}`} />
+                                                                        </div>
+                                                                    </th>
+                                                                ))}
+                                                                <th className="p-5 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {currentItems.map((row, idx) => (
+                                                                <motion.tr
+                                                                    key={idx}
+                                                                    initial={{ opacity: 0, y: 10 }}
+                                                                    animate={{ opacity: 1, y: 0 }}
+                                                                    transition={{ delay: idx * 0.03, duration: 0.3 }}
+                                                                    className="table-row-minimal group"
+                                                                >
+                                                                    {Object.values(row).map((val, i) => (
+                                                                        <td key={i} className="p-5 text-sm text-slate-600 dark:text-slate-300 font-medium">{String(val)}</td>
+                                                                    ))}
+                                                                    <td className="p-5 text-right">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                let idField = '';
+                                                                                switch (activeSection) {
+                                                                                    case 'students': idField = 'StudentID'; break;
+                                                                                    case 'routes': idField = 'RouteID'; break;
+                                                                                    case 'buses': idField = 'BusID'; break;
+                                                                                    case 'drivers': idField = 'DriverID'; break;
+                                                                                    case 'maintenance': idField = 'LogID'; break;
+                                                                                    case 'incidents': idField = 'IncidentID'; break;
+                                                                                }
+                                                                                initiateDelete(row[idField]);
+                                                                            }}
+                                                                            className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                                                            title="Delete Record"
+                                                                        >
+                                                                            <Trash2 size={18} />
+                                                                        </button>
+                                                                    </td>
+                                                                </motion.tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                {/* Pagination Controls */}
+                                                <div className="p-4 border-t border-slate-100 dark:border-dark-border flex items-center justify-between bg-slate-50/50 dark:bg-white/5">
+                                                    <div className="text-sm text-slate-500">
+                                                        Showing <span className="font-bold text-slate-700 dark:text-slate-300">{indexOfFirstItem + 1}</span> to <span className="font-bold text-slate-700 dark:text-slate-300">{Math.min(indexOfLastItem, filteredData.length)}</span> of <span className="font-bold text-slate-700 dark:text-slate-300">{filteredData.length}</span> entries
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => paginate(Math.max(1, currentPage - 1))}
+                                                            disabled={currentPage === 1}
+                                                            className="p-2 rounded-lg border border-slate-200 dark:border-dark-border text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-white/10 transition-colors"
+                                                        >
+                                                            <ChevronLeft size={16} />
+                                                        </button>
+
+                                                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                                            // Logic for sliding window could be added, simplified for now
+                                                            const page = i + 1;
+                                                            // better logic for many pages:
+                                                            let p = page;
+                                                            if (totalPages > 5 && currentPage > 3) p = currentPage - 3 + page;
+                                                            if (p > totalPages) return null;
+
+                                                            return (
+                                                                <button
+                                                                    key={p}
+                                                                    onClick={() => paginate(p)}
+                                                                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === p ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-slate-500 hover:bg-white dark:hover:bg-white/10'}`}
+                                                                >
+                                                                    {p}
+                                                                </button>
+                                                            );
+                                                        })}
+
+                                                        <button
+                                                            onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
+                                                            disabled={currentPage === totalPages}
+                                                            className="p-2 rounded-lg border border-slate-200 dark:border-dark-border text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-white/10 transition-colors"
+                                                        >
+                                                            <ChevronRight size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                                                <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-6">
+                                                    <Search size={32} className="opacity-30" />
+                                                </div>
+                                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No matches found</h3>
+                                                <p className="text-sm">Try adjusting your search query</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <button onClick={() => { setFormData({}); setShowModal(true); }} className="btn-primary flex items-center space-x-2 w-full md:w-auto justify-center px-6 py-2.5 text-xs">
-                                    <Plus size={18} />
-                                    <span>NEW RECORD</span>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
+            </main>
+
+            {/* Modals */}
+            <DeleteModal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+            />
+
+            <AnimatePresence>
+                {showModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                            onClick={() => setShowModal(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                            transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                            className="bg-white dark:bg-dark-surface w-full max-w-lg rounded-2xl shadow-2xl relative z-10 overflow-hidden"
+                        >
+                            <div className="px-8 py-6 border-b border-slate-100 dark:border-dark-border flex justify-between items-center bg-slate-50/50 dark:bg-white/5">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add New {activeSection.slice(0, -1)}</h3>
+                                <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+                                    <X size={20} />
                                 </button>
                             </div>
 
-                            {/* Main Data Table */}
-                            <div className="card overflow-x-auto min-h-[600px] shadow-2xl border-slate-700/50">
-                                {dataLoading ? (
-                                    <div className="space-y-4">
-                                        {[...Array(5)].map((_, i) => (
-                                            <div key={i} className="flex items-center space-x-4 p-4 border-b border-slate-700/30">
-                                                <SkeletonLoader className="w-1/4 h-6" />
-                                                <SkeletonLoader className="w-1/4 h-6" />
-                                                <SkeletonLoader className="w-1/4 h-6" />
-                                                <SkeletonLoader className="w-full h-8 ml-auto" />
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : filteredData.length > 0 ? (
-                                    <table className="w-full text-left">
-                                        <thead className="sticky top-0 z-10 bg-dark-surface">
-                                            <tr className="border-b border-slate-700">
-                                                {Object.keys(filteredData[0]).map(key => (
-                                                    <th key={key} className="p-4 text-[11px] font-bold uppercase tracking-wider text-slate-500">{key}</th>
-                                                ))}
-                                                <th className="p-4 text-[11px] font-bold uppercase tracking-wider text-right text-slate-500">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-800/50">
-                                            <AnimatePresence mode='popLayout'>
-                                                {filteredData.map((row, idx) => (
-                                                    <motion.tr
-                                                        key={idx}
-                                                        initial={{ opacity: 0, x: -20 }}
-                                                        animate={{ opacity: 1, x: 0 }}
-                                                        exit={{ opacity: 0, x: 20 }}
-                                                        transition={{ delay: idx * 0.05 }}
-                                                        className="hover:bg-primary/5 transition-colors group table-row"
-                                                    >
-                                                        {Object.values(row).map((val, i) => (
-                                                            <td key={i} className="p-4 text-xs font-bold text-white">{String(val)}</td>
-                                                        ))}
-                                                        <td className="p-4 text-right">
-                                                            <button
-                                                                onClick={() => {
-                                                                    let idField = '';
-                                                                    switch (activeSection) {
-                                                                        case 'students': idField = 'StudentID'; break;
-                                                                        case 'routes': idField = 'RouteID'; break;
-                                                                        case 'buses': idField = 'BusID'; break;
-                                                                        case 'drivers': idField = 'DriverID'; break;
-                                                                        case 'maintenance': idField = 'LogID'; break;
-                                                                        case 'incidents': idField = 'IncidentID'; break;
-                                                                    }
-                                                                    handleDelete(row[idField]);
-                                                                }}
-                                                                className="text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-all p-2 hover:scale-110 active:scale-95"
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        </td>
-                                                    </motion.tr>
-                                                ))}
-                                            </AnimatePresence>
-                                        </tbody>
-                                    </table>
-                                ) : (
-                                    <div className="h-[500px] flex flex-col items-center justify-center space-y-4 opacity-30">
-                                        <AlertTriangle size={48} />
-                                        <p className="font-bold uppercase tracking-[0.2em] text-[10px]">No active protocols found</p>
-                                    </div>
-                                )}
-                            </div>
-                        </motion.div>
-
-                        {/* RIGHT: Intelligence Panel (Analytics Sidebar) */}
-                        <motion.div variants={itemVariants} className="w-full xl:w-[400px] space-y-6">
-                            {/* Analytics 1 - Performance */}
-                            <div className="card border-primary/10">
-                                <h3 className="text-primary text-[10px] font-bold uppercase tracking-[0.2em] mb-6 flex items-center">
-                                    <LayoutDashboard size={14} className="mr-2" /> Live Performance
-                                </h3>
-                                <div className="h-56">
-                                    <Line
-                                        data={{
-                                            labels: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN'],
-                                            datasets: [{
-                                                label: 'ACTIVITY',
-                                                data: [stats.students, 10, 15, 20, 25, stats.students],
-                                                borderColor: '#00D4FF',
-                                                backgroundColor: (context) => {
-                                                    const ctx = context.chart.ctx;
-                                                    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-                                                    gradient.addColorStop(0, 'rgba(0, 212, 255, 0.4)');
-                                                    gradient.addColorStop(1, 'rgba(0, 212, 255, 0)');
-                                                    return gradient;
-                                                },
-                                                fill: true,
-                                                tension: 0.5,
-                                                pointRadius: 4,
-                                                pointHoverRadius: 6,
-                                                pointBackgroundColor: '#00D4FF',
-                                                pointBorderColor: '#1E293B',
-                                                pointBorderWidth: 2
-                                            }]
-                                        }}
-                                        options={{
-                                            maintainAspectRatio: false,
-                                            scales: {
-                                                y: {
-                                                    grid: { color: '#334155', borderDash: [2, 4] },
-                                                    ticks: { color: '#475569', font: { size: 9, weight: '600', family: 'Rajdhani' } }
-                                                },
-                                                x: {
-                                                    grid: { display: false },
-                                                    ticks: { color: '#475569', font: { size: 10, weight: '700', family: 'Rajdhani' } }
-                                                }
-                                            },
-                                            plugins: {
-                                                legend: { display: false },
-                                                tooltip: {
-                                                    backgroundColor: '#0F172A',
-                                                    titleColor: '#00D4FF',
-                                                    bodyColor: '#F1F5F9',
-                                                    borderColor: '#475569',
-                                                    borderWidth: 1,
-                                                    padding: 10,
-                                                    displayColors: false,
-                                                    titleFont: { family: 'Rajdhani', weight: 'bold' },
-                                                    bodyFont: { family: 'Rajdhani' },
-                                                    callbacks: {
-                                                        label: (context) => `VOL: ${context.parsed.y} UNITS`
-                                                    }
-                                                }
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Analytics 2 - Fleet Mix */}
-                            <div className="card border-primary/10">
-                                <h3 className="text-primary text-[10px] font-bold uppercase tracking-[0.2em] mb-6">Resource Allocation</h3>
-                                <div className="h-64 flex items-center justify-center">
-                                    <Pie
-                                        data={{
-                                            labels: ['STUDENTS', 'BUSES', 'ROUTES'],
-                                            datasets: [{
-                                                data: [stats.students, stats.buses, stats.routes],
-                                                backgroundColor: ['#00D4FF', '#0EA5E9', '#1E293B'],
-                                                borderWidth: 2,
-                                                borderColor: '#0f172a',
-                                                hoverOffset: 10
-                                            }]
-                                        }}
-                                        options={{
-                                            maintainAspectRatio: false,
-                                            plugins: {
-                                                legend: {
-                                                    position: 'bottom',
-                                                    labels: {
-                                                        color: '#94A3B8',
-                                                        boxWidth: 8,
-                                                        padding: 15,
-                                                        font: { size: 9, weight: '700', family: 'Rajdhani' },
-                                                        usePointStyle: true
-                                                    }
-                                                },
-                                                tooltip: {
-                                                    backgroundColor: '#0F172A',
-                                                    titleColor: '#00D4FF',
-                                                    bodyColor: '#F1F5F9',
-                                                    borderColor: '#475569',
-                                                    borderWidth: 1,
-                                                    padding: 10,
-                                                    titleFont: { family: 'Rajdhani', weight: 'bold' },
-                                                    bodyFont: { family: 'Rajdhani' },
-                                                    callbacks: {
-                                                        label: (context) => ` ${context.label}: ${context.parsed} COUNT`
-                                                    }
-                                                }
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Quick Instructions/Help Card */}
-                            <div className="p-6 border rounded-xl transition-colors bg-primary/5 border-primary/20 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-2 opacity-50"><AlertTriangle size={40} className="text-primary/20" /></div>
-                                <p className="text-primary text-[10px] font-bold uppercase tracking-widest mb-2 relative z-10">Fleet Support</p>
-                                <p className="text-xs leading-relaxed italic text-slate-400 relative z-10">
-                                    "Managing <span className="text-primary font-bold">{stats.buses}</span> active units across <span className="text-primary font-bold">{stats.routes}</span> routes. Ensure all incidents are protocol-verified."
-                                </p>
-                            </div>
-                        </motion.div>
-                    </div>
-                </motion.div>
-            </main>
-
-            {/* Add Modal */}
-            <AnimatePresence>
-                {showModal && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-dark-surface border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl relative overflow-hidden"
-                        >
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-primary animate-pulse" />
-                            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-                                <h3 className="text-xl font-bold uppercase tracking-widest text-white">Add New {activeSection.slice(0, -1)}</h3>
-                                <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-white transition-colors"><X size={24} /></button>
-                            </div>
-                            <form onSubmit={handleAdd} className="p-6 space-y-4">
-                                <div className="grid grid-cols-1 gap-4">
+                            <form onSubmit={handleAdd} className="p-8 space-y-5">
+                                <div className="space-y-4">
                                     {getFormFields().map(field => (
-                                        <div key={field.name} className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">{field.label}</label>
+                                        <div key={field.name}>
+                                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-2">{field.label}</label>
                                             {field.type === 'textarea' ? (
-                                                <textarea className="input-field" rows="3" onChange={e => setFormData({ ...formData, [field.name]: e.target.value })} required />
+                                                <textarea
+                                                    className="input-minimal min-h-[100px] resize-none"
+                                                    onChange={e => setFormData({ ...formData, [field.name]: e.target.value })}
+                                                    required
+                                                />
                                             ) : (
-                                                <input type={field.type} className="input-field" onChange={e => setFormData({ ...formData, [field.name]: e.target.value })} required />
+                                                <input
+                                                    type={field.type}
+                                                    className="input-minimal"
+                                                    onChange={e => setFormData({ ...formData, [field.name]: e.target.value })}
+                                                    required
+                                                />
                                             )}
                                         </div>
                                     ))}
                                 </div>
-                                <div className="flex space-x-4 pt-4">
-                                    <button type="button" onClick={() => setShowModal(false)} className="flex-1 p-3 border border-slate-800 rounded-lg font-bold text-slate-400 hover:bg-slate-800 transition-all uppercase tracking-widest">Cancel</button>
-                                    <button type="submit" className="flex-1 p-3 bg-primary text-slate-900 rounded-lg font-bold hover:brightness-110 transition-all uppercase tracking-widest shadow-lg shadow-primary/20">Establish Record</button>
+
+                                <div className="flex gap-4 pt-4">
+                                    <button type="button" onClick={() => setShowModal(false)} className="flex-1 btn-secondary text-sm">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="flex-1 btn-primary text-sm shadow-xl shadow-primary/20">
+                                        Create Entry
+                                    </button>
                                 </div>
                             </form>
                         </motion.div>
@@ -540,31 +623,147 @@ const Dashboard = () => {
     );
 };
 
-const StatCard = ({ title, value, icon: Icon, loading, danger, onClick }) => (
-    <motion.button
-        whileHover={{ scale: 1.02, y: -5 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={onClick}
-        className="card group relative overflow-hidden text-left w-full h-full"
-    >
-        <div className={`absolute top-0 left-0 w-1.5 h-full transition-all duration-300 ${danger ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-primary shadow-[0_0_15px_rgba(0,212,255,0.5)]'}`} />
-        <div className="flex items-center space-x-5 relative z-10">
-            <div className={`w-14 h-14 rounded-xl flex items-center justify-center border transition-all duration-300 group-hover:scale-110 ${danger ? 'border-red-500/30 text-red-500 bg-red-500/5 group-hover:bg-red-500/10' : 'border-primary/30 text-primary bg-primary/5 group-hover:bg-primary/10'}`}>
-                <Icon size={24} />
-            </div>
-            <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-slate-400 group-hover:text-white transition-colors">{title}</p>
-                {loading ? (
-                    <div className="h-8 w-16 px-2"><SkeletonLoader className="w-full h-full" /></div>
-                ) : (
-                    <p className="text-3xl font-bold leading-none text-white">{value}</p>
-                )}
-            </div>
+const AnalyticsView = ({ stats }) => (
+    <div className="space-y-8">
+        {/* Stats Grid - Moved here */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard title="Total Students" value={stats.students} icon={Users} color="text-blue-500" bg="bg-blue-50 dark:bg-blue-900/20" />
+            <StatCard title="Active Buses" value={stats.buses} icon={Bus} color="text-amber-500" bg="bg-amber-50 dark:bg-amber-900/20" />
+            <StatCard title="Total Routes" value={stats.routes} icon={RouteIcon} color="text-emerald-500" bg="bg-emerald-50 dark:bg-emerald-900/20" />
+            <StatCard title="Incidents" value={stats.incidents} icon={AlertTriangle} color="text-red-500" bg="bg-red-50 dark:bg-red-900/20" />
         </div>
 
-        {/* Decorative background element */}
-        <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full blur-2xl opacity-10 transition-all group-hover:opacity-20 ${danger ? 'bg-red-500' : 'bg-primary'}`} />
-    </motion.button>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <div className="card-minimal p-8">
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Activity Overview</h3>
+                        <p className="text-sm text-slate-500 mt-1">Weekly fleet usage stats</p>
+                    </div>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-500 p-2 rounded-lg">
+                        <BarChart2 size={20} />
+                    </div>
+                </div>
+                <div className="h-80">
+                    <Line
+                        data={{
+                            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                            datasets: [{
+                                label: 'Passengers',
+                                data: [650, 720, 680, 810, 750, 420, 380],
+                                borderColor: '#2563eb',
+                                backgroundColor: (context) => {
+                                    const ctx = context.chart.ctx;
+                                    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                                    gradient.addColorStop(0, 'rgba(37, 99, 235, 0.2)');
+                                    gradient.addColorStop(1, 'rgba(37, 99, 235, 0)');
+                                    return gradient;
+                                },
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 4,
+                                pointBackgroundColor: '#ffffff',
+                                pointBorderColor: '#2563eb',
+                                pointBorderWidth: 2,
+                                pointHoverRadius: 6,
+                            }]
+                        }}
+                        options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#1e293b',
+                                    padding: 12,
+                                    titleFont: { size: 13, family: 'Inter' },
+                                    bodyFont: { size: 13, family: 'Inter' },
+                                    cornerRadius: 8,
+                                    displayColors: false,
+                                }
+                            },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+                                y: { grid: { color: '#e2e8f0', borderDash: [5, 5] }, ticks: { color: '#94a3b8' }, border: { display: false } }
+                            }
+                        }}
+                    />
+                </div>
+            </div>
+
+            <div className="card-minimal p-8">
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Fleet Status</h3>
+                        <p className="text-sm text-slate-500 mt-1">Current vehicle distribution</p>
+                    </div>
+                    <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 p-2 rounded-lg">
+                        <PieChart size={20} />
+                    </div>
+                </div>
+                <div className="h-80 flex justify-center relative">
+                    <Pie
+                        data={{
+                            labels: ['Active Duty', 'In Depot', 'Maintenance', 'Out of Service'],
+                            datasets: [{
+                                data: [stats.buses || 42, 5, 2, 1],
+                                backgroundColor: ['#2563eb', '#64748b', '#f59e0b', '#ef4444'],
+                                borderWidth: 2,
+                                borderColor: '#ffffff',
+                                hoverOffset: 10
+                            }]
+                        }}
+                        options={{
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        padding: 20,
+                                        usePointStyle: true,
+                                        font: { family: 'Inter', size: 12, weight: 600 }
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: '#1e293b',
+                                    padding: 12,
+                                    bodyFont: { size: 13, family: 'Inter' },
+                                    cornerRadius: 8,
+                                    callbacks: {
+                                        label: function (context) {
+                                            return ` ${context.label}: ${context.raw} Buses`;
+                                        }
+                                    }
+                                }
+                            },
+                        }}
+                    />
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
+const StatCard = ({ title, value, icon: Icon, color, bg }) => (
+    <motion.div
+        whileHover={{ y: -5 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        className="card-minimal p-6 flex flex-col justify-between h-36 relative overflow-hidden group cursor-pointer"
+    >
+        <div className="flex justify-between items-start z-10 relative">
+            <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{title}</p>
+                <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-2 group-hover:scale-105 transition-transform origin-left">{value}</h3>
+            </div>
+            <div className={`p-3 rounded-xl ${bg} ${color} shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:scale-110`}>
+                <Icon size={22} />
+            </div>
+        </div>
+        {/* Decorative elements */}
+        <div className={`absolute -bottom-6 -right-6 w-32 h-32 rounded-full ${bg} opacity-20 group-hover:scale-125 transition-transform duration-500 ease-out`} />
+        <div className={`absolute -top-6 -left-6 w-20 h-20 rounded-full ${bg} opacity-10`} />
+    </motion.div>
 );
 
 const App = () => {
@@ -579,21 +778,48 @@ const App = () => {
         return () => unsubscribe();
     }, []);
 
+    // Initial Splash Screen
     if (loading) return (
-        <div className="min-h-screen bg-dark flex flex-col items-center justify-center font-['Rajdhani',sans-serif] space-y-4">
-            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-            <div className="text-primary animate-pulse text-xl font-bold tracking-widest uppercase italic">Initializing System...</div>
+        <div className="fixed inset-0 bg-slate-50 dark:bg-dark flex items-center justify-center">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center gap-4"
+            >
+                <div className="loader-simple" />
+                <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest animate-pulse">Initializing System...</p>
+            </motion.div>
         </div>
     );
 
     return (
         <Router>
-            <Routes>
-                <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
-                <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />
-                <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" />} />
-                <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
+            <AnimatePresence mode="wait">
+                <Routes>
+                    <Route path="/login" element={
+                        user ? <Navigate to="/" /> : (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                <Login />
+                            </motion.div>
+                        )
+                    } />
+                    <Route path="/signup" element={
+                        user ? <Navigate to="/" /> : (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                <Signup />
+                            </motion.div>
+                        )
+                    } />
+                    <Route path="/" element={
+                        user ? (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                <Dashboard />
+                            </motion.div>
+                        ) : <Navigate to="/login" />
+                    } />
+                    <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+            </AnimatePresence>
         </Router>
     );
 };

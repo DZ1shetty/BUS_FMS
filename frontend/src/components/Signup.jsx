@@ -3,6 +3,7 @@ import { auth } from '../firebase';
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, Mail, Lock, AlertCircle } from 'lucide-react';
+import InteractiveBackground from './InteractiveBackground';
 
 const Signup = () => {
     const [email, setEmail] = useState('');
@@ -40,87 +41,101 @@ const Signup = () => {
     };
 
     return (
-        <div className="min-h-screen bg-dark flex flex-col items-center justify-center p-4 font-['Rajdhani',sans-serif]">
-            <div className="w-full max-w-md bg-dark-surface border border-slate-700/50 rounded-xl p-8 shadow-2xl relative overflow-hidden">
-                {/* Technical Accent */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-primary animate-pulse" />
+        <div className="min-h-screen relative flex flex-col items-center justify-center p-6">
+            <InteractiveBackground />
 
+            <div className="w-full max-w-md bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-xl p-8 relative z-10 animate-fade-in">
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 text-primary rounded-tr-2xl rounded-bl-2xl border border-primary/20 mb-4 font-bold text-3xl">B</div>
-                    <h1 className="text-3xl font-bold text-white tracking-widest uppercase">Create Account</h1>
-                    <p className="text-slate-400 mt-2 uppercase tracking-tighter text-sm">Join the Fleet Network</p>
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-primary rounded-xl text-white font-bold text-2xl shadow-lg shadow-primary/20 mb-4">
+                        B
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Create Account</h1>
+                    <p className="text-slate-500 text-sm">Join BusFleet to get started</p>
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center space-x-3 text-red-500 text-sm">
+                    <div className="mb-6 p-4 bg-red-50 text-red-600 dark:bg-red-900/10 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-xl flex items-center gap-3 text-sm">
                         <AlertCircle size={18} />
                         <span>{error}</span>
                     </div>
                 )}
 
                 <form onSubmit={handleSignup} className="space-y-5">
-                    <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                        <input
-                            type="email"
-                            required
-                            placeholder="EMAIL ADDRESS"
-                            className="w-full bg-dark/50 border border-slate-700/50 rounded lg py-3 pl-12 pr-4 text-slate-200 focus:outline-none focus:border-primary transition-all uppercase tracking-widest text-sm"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Email Address</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                type="email"
+                                required
+                                placeholder="name@company.com"
+                                className="input-minimal pl-10"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
+                        </div>
                     </div>
-                    <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                        <input
-                            type="password"
-                            required
-                            placeholder="PASSWORD"
-                            className="w-full bg-dark/50 border border-slate-700/50 rounded lg py-3 pl-12 pr-4 text-slate-200 focus:outline-none focus:border-primary transition-all uppercase tracking-widest text-sm"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
+
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Password</label>
+                        <div className="relative">
+                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                type="password"
+                                required
+                                placeholder="Create a password"
+                                className="input-minimal pl-10"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                        </div>
                     </div>
-                    <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                        <input
-                            type="password"
-                            required
-                            placeholder="CONFIRM PASSWORD"
-                            className="w-full bg-dark/50 border border-slate-700/50 rounded lg py-3 pl-12 pr-4 text-slate-200 focus:outline-none focus:border-primary transition-all uppercase tracking-widest text-sm"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                        />
+
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Confirm Password</label>
+                        <div className="relative">
+                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                type="password"
+                                required
+                                placeholder="Confirm your password"
+                                className="input-minimal pl-10"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                            />
+                        </div>
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className="btn-primary w-full flex items-center justify-center space-x-2 py-4"
+                        className="btn-primary w-full py-3 text-sm"
                     >
-                        <UserPlus size={20} />
-                        <span>{loading ? 'PROCESSING...' : 'ESTABLISH ACCOUNT'}</span>
+                        {loading ? (
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <>
+                                <UserPlus size={18} />
+                                <span>Create Account</span>
+                            </>
+                        )}
                     </button>
                 </form>
 
-                <div className="mt-6">
-                    <div className="relative flex items-center justify-center mb-6">
-                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-700/50" /></div>
-                        <span className="relative bg-dark-surface px-4 text-xs text-slate-500 uppercase tracking-widest">Or Register via</span>
-                    </div>
-
+                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-dark-border">
                     <button
                         onClick={handleGoogleSignIn}
-                        className="w-full border border-slate-700/50 hover:border-primary/50 text-slate-300 py-3 rounded-lg flex items-center justify-center space-x-3 transition-all hover:bg-primary/5 group"
+                        className="w-full btn-secondary flex items-center justify-center gap-2.5 text-sm"
                     >
                         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-                        <span className="uppercase tracking-widest text-xs font-bold group-hover:text-primary">Continue with Google</span>
+                        <span>Sign up with Google</span>
                     </button>
-                </div>
 
-                <p className="mt-8 text-center text-slate-500 text-sm uppercase tracking-tighter">
-                    Already a member? <Link to="/login" className="text-primary hover:underline ml-1">Access Account</Link>
-                </p>
+                    <p className="mt-6 text-center text-sm text-slate-500">
+                        Already have an account?
+                        <Link to="/login" className="text-primary hover:text-primary-hover font-semibold ml-1">Sign in</Link>
+                    </p>
+                </div>
             </div>
         </div>
     );
